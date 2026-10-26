@@ -104,4 +104,55 @@ No início, será priorizado um piloto com um pequeno grupo de usuários. As met
 | Bloco | Definição para o TestFlow AI |
 |---|---|
 | **Problema** | Preparação repetitiva de testes de APIs; execução e registro dispersos; dificuldade de documentar resultados e investigar falhas. Hoje, os clientes utilizam ferramentas de API, scripts, planilhas e processos manuais. |
-| **Segmentos de clientes** | Freelancers, pequenas software houses e equipes de desenvolvimento que trabalham com APIs REST. Os primeiros usuários a buscar serão profissionais com testes
+| **Segmentos de clientes** | Freelancers, pequenas software houses e equipes de desenvolvimento que trabalham com APIs REST. Os primeiros usuários a buscar serão profissionais com testes repetitivos e sem equipe dedicada de QA. |
+| **Proposta única de valor** | Transformar requisitos de APIs em testes revisáveis, executáveis e documentados em um único fluxo assistido por IA. |
+| **Solução** | 1. Gerar casos de teste a partir de requisitos. 2. Executar verificações controladas de APIs. 3. Apresentar resultados, evidências e relatórios com histórico. |
+| **Canais** | GitHub, demonstrações do produto, comunidades de desenvolvedores, conteúdo técnico, contatos com pequenas software houses e indicações de usuários-piloto. |
+| **Fontes de receita** | Plano Free para experimentação; Pro por R$ 59,90/mês; Equipe por R$ 249,90/mês, inicialmente como hipóteses. Assinaturas e cobrança serão integradas ao Stripe. |
+| **Estrutura de custos** | Hospedagem, banco de dados, armazenamento, consumo de IA, execução de testes, tarifas de pagamento, manutenção, suporte e tempo de desenvolvimento. |
+| **Métricas-chave** | Cadastros, projetos ativos, testes gerados e executados, aproveitamento dos casos, usuários recorrentes, assinantes pagos, MRR, retenção e custo por execução. |
+| **Vantagem injusta** | Ainda não comprovada. A vantagem potencial está em desenvolver um fluxo simples voltado às necessidades de pequenas equipes e acumular conhecimento sobre qualidade dos casos gerados, padrões de falha e necessidades reais dos usuários. |
+
+## 8. Reaproveitamento da arquitetura cloud
+
+O projeto utiliza como ponto de partida a arquitetura desenvolvida anteriormente na disciplina ISW055. O objetivo é substituir o domínio de catálogo de filmes por um sistema de automação de testes, preservando os serviços e adaptando as funcionalidades ao novo negócio.
+
+| Peça do projeto atual | O que vira no TestFlow AI |
+|---|---|
+| Catálogo de filmes e integração TMDB | Gestão de projetos de teste, requisitos, casos de teste e execuções |
+| Microsserviço de autenticação | Cadastro, login, autenticação e recuperação de acesso dos usuários |
+| RBAC (papéis e permissões) | Papéis de usuário e administrador; posteriormente, permissões de membros de equipes |
+| MariaDB | Armazenamento de usuários, projetos, requisitos, casos, execuções, resultados e planos |
+| Serviço de logs com Redis Streams | Auditoria de eventos, como criação de projetos, geração de testes, execuções e alterações de plano |
+| Perfil e upload com MinIO | Armazenamento de especificações, relatórios e evidências das execuções, além dos recursos de perfil necessários |
+| Plano Premium e Stripe | Planos Free, Pro e Equipe, com limites de utilização e assinaturas |
+| Docker e Docker Compose | Empacotamento e execução dos componentes da aplicação |
+| Portainer e infraestrutura existente | Implantação do novo produto no ambiente definido pela disciplina, preservando a stack e o domínio atuais |
+| Health checks e dependências entre serviços | Verificação de disponibilidade da API, autenticação, logs e demais componentes necessários |
+| Swagger / OpenAPI, se disponível | Documentação dos endpoints do próprio TestFlow AI e possível importação de especificações das APIs testadas |
+| CI/CD, se configurado | Validação automatizada das alterações e apoio à publicação de novas versões |
+| Observabilidade, se implementada | Monitoramento de erros, disponibilidade, execuções e consumo dos recursos |
+
+O reaproveitamento será feito por adaptação, não pela simples troca de nomes. As tabelas, regras de negócio, rotas e funcionalidades específicas do catálogo serão substituídas pelas necessidades do novo produto.
+
+A aplicação deverá utilizar um banco de dados e configurações compatíveis com o novo domínio, respeitando as instruções de implantação da disciplina. Não serão reutilizados dados pessoais dos usuários do catálogo como dados de clientes do TestFlow AI.
+
+O primeiro MVP priorizará uma API principal modular, MariaDB, autenticação, geração de testes e execução controlada. Redis, MinIO e os demais componentes serão integrados conforme a necessidade do fluxo e os requisitos acadêmicos. A arquitetura existente deverá continuar sendo aproveitada, sem criar uma nova stack ou solicitar outro domínio.
+
+## Próximas etapas
+
+1. Criar um novo repositório público com o nome do produto e espelhar o repositório anterior, preservando o histórico de commits.
+2. Substituir este README pelo plano de negócio e registrar o commit da documentação.
+3. Criar pelo menos cinco issues para organizar as próximas entregas.
+4. Atualizar o README do repositório anterior com o link para o novo projeto.
+5. Registrar a entrega em uma issue intitulada **Entrega — Fork e plano de negócio**, mencionando `@siriani`, com os links e as evidências solicitadas.
+6. Na Atividade 10, evoluir a aplicação para o novo negócio e implantá-la na infraestrutura existente.
+7. Na Atividade 11, concluir a integração de assinaturas com Stripe.
+
+O desenvolvimento seguirá de forma incremental, distinguindo funcionalidades planejadas, implementadas e efetivamente validadas.
+
+---
+
+Projeto acadêmico: ISW055 — Introdução à Computação em Nuvem, FATEC, 2026.2.
+
+Professor: [Allan Lincoln Rodrigues Siriani](https://github.com/siriani).
