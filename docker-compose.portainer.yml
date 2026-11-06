@@ -1,7 +1,7 @@
 services:
 
   app:
-    image: joicesoato/catalogo-filmes-tom-hanks:${IMAGE_TAG:-latest}
+    image: joicesoato/testflow-ai:${IMAGE_TAG:-latest}
 
     environment:
       PORT: "3000"
@@ -18,8 +18,6 @@ services:
       JWT_SECRET: "${JWT_SECRET}"
       SESSION_SECRET: "${SESSION_SECRET}"
       INTERNAL_SERVICE_SECRET: "${INTERNAL_SERVICE_SECRET}"
-
-      TMDB_API_KEY: "${TMDB_API_KEY}"
       TRUST_PROXY_HOPS: "${TRUST_PROXY_HOPS:-1}"
 
       MAIL_HOST: "${MAIL_HOST}"
@@ -31,7 +29,7 @@ services:
       MINIO_ENDPOINT: "${MINIO_ENDPOINT:-http://minio:9000}"
       MINIO_ACCESS_KEY: "${MINIO_ACCESS_KEY}"
       MINIO_SECRET_KEY: "${MINIO_SECRET_KEY}"
-      MINIO_BUCKET: "${MINIO_BUCKET:-profile-photos}"
+      MINIO_BUCKET: "${MINIO_BUCKET:-testflow-evidencias}"
       MINIO_REGION: "${MINIO_REGION:-us-east-1}"
       STRIPE_SECRET_KEY: "${STRIPE_SECRET_KEY}"
       STRIPE_WEBHOOK_SECRET: "${STRIPE_WEBHOOK_SECRET}"
@@ -65,7 +63,7 @@ services:
       retries: 5
 
   auth-service:
-    image: joicesoato/catalogo-filmes-tom-hanks-auth:${IMAGE_TAG:-latest}
+    image: joicesoato/testflow-ai-auth:${IMAGE_TAG:-latest}
     environment:
       AUTH_PORT: "3001"
       APP_URL: "${APP_URL}"
@@ -96,7 +94,7 @@ services:
       retries: 5
 
   log-service:
-    image: joicesoato/catalogo-filmes-tom-hanks-log:${IMAGE_TAG:-latest}
+    image: joicesoato/testflow-ai-log:${IMAGE_TAG:-latest}
     environment:
       LOG_PORT: "3002"
       REDIS_URL: "redis://redis:6379"

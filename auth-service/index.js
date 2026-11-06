@@ -31,8 +31,11 @@ const pool = mysql.createPool({
 const JWT_SECRET = process.env.JWT_SECRET;
 const INTERNAL_SERVICE_SECRET = process.env.INTERNAL_SERVICE_SECRET || "";
 
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET não configurado.");
+if (!JWT_SECRET || Buffer.byteLength(JWT_SECRET, "utf8") < 32) {
+  throw new Error("JWT_SECRET deve possuir pelo menos 32 bytes e ser único por ambiente.");
+}
+if (!INTERNAL_SERVICE_SECRET || Buffer.byteLength(INTERNAL_SERVICE_SECRET, "utf8") < 32) {
+  throw new Error("INTERNAL_SERVICE_SECRET deve possuir pelo menos 32 bytes e ser único por ambiente.");
 }
 
 const sensitiveLimiter = rateLimit({
@@ -44,23 +47,36 @@ const sensitiveLimiter = rateLimit({
 });
 
 const permissoesPorRole = {
-  usuario: [
-    "catalog:read",
-    "favorites:manage",
-    "comments:create",
-    "comments:delete:own",
-    "account:manage"
-  ],
   admin: [
-    "catalog:read",
-    "favorites:manage",
-    "comments:create",
-    "comments:delete:own",
-    "comments:delete:any",
-    "admin:moderate",
-    "account:manage"
+    "projects:read", "projects:create", "projects:update", "projects:delete",
+    "cases:read", "cases:create", "cases:update", "cases:delete",
+    "executions:create", "executions:read",
+    "evidence:create", "evidence:read", "logs:read", "account:manage"
+  ],
+  analista: [
+    "projects:read", "projects:create", "projects:update", "projects:delete",
+    "cases:read", "cases:create", "cases:update", "cases:delete",
+    "executions:create", "executions:read",
+    "evidence:create", "evidence:read", "account:manage"
+  ],
+  desenvolvedor: [
+    "projects:read", "cases:read", "executions:create", "executions:read",
+    "evidence:create", "evidence:read", "account:manage"
+  ],
+  // Compatibilidade com contas legadas da versão anterior.
+  usuario: [
+    "projects:read", "projects:create", "projects:update", "projects:delete",
+    "cases:read", "cases:create", "cases:update", "cases:delete",
+    "executions:create", "executions:read",
+    "evidence:create", "evidence:read", "account:manage"
   ]
 };
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  })[char]);
+}
 
 const path = require("path");
 
@@ -114,13 +130,14 @@ app.post("/register", sensitiveLimiter, async (req, res) => {
     }
 
     const senhaHash = await bcrypt.hash(senha, 12);
+    const nomeHtml = escapeHtml(nome);
 
     const tokenVerificacao = crypto.randomBytes(32).toString("hex");
 
     const [resultado] = await pool.execute(
       `INSERT INTO usuarios
        (nome, email, senha_hash, role, email_verificado, token_verificacao, verificacao_expira_em)
-       VALUES (?, ?, ?, 'usuario', FALSE, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE))`,
+       VALUES (?, ?, ?, 'analista', FALSE, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE))`,
       [nome, email, senhaHash, tokenVerificacao]
     );
 
@@ -133,14 +150,14 @@ app.post("/register", sensitiveLimiter, async (req, res) => {
       await transporter.sendMail({
         from: process.env.MAIL_FROM,
         to: email,
-        subject: "Confirme seu cadastro - Catálogo de Filmes",
+        subject: "Confirme seu cadastro - TestFlow AI",
         html: `
           <h2>Confirme seu e-mail</h2>
 
-          <p>Olá, ${nome}!</p>
+          <p>Olá, ${nomeHtml}!</p>
 
           <p>
-            Seu cadastro no <strong>Catálogo de Filmes</strong> foi realizado.
+            Seu cadastro no <strong>TestFlow AI</strong> foi realizado.
           </p>
 
           <p>
@@ -191,7 +208,7 @@ app.post("/register", sensitiveLimiter, async (req, res) => {
         id: resultado.insertId,
         nome,
         email,
-        role: "usuario"
+        role: "analista"
       }
     });
 
@@ -399,6 +416,7 @@ app.post("/forgot-password", sensitiveLimiter, async (req, res) => {
     }
 
     const usuario = usuarios[0];
+    const nomeHtml = escapeHtml(usuario.nome);
 
     const token = crypto.randomBytes(32).toString("hex");
     const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
@@ -416,10 +434,10 @@ app.post("/forgot-password", sensitiveLimiter, async (req, res) => {
     await transporter.sendMail({
       from: process.env.MAIL_FROM,
       to: usuario.email,
-      subject: "Recuperação de senha - Catálogo de Filmes",
+      subject: "Recuperação de senha - TestFlow AI",
       html: `
         <h2>Recuperação de senha</h2>
-        <p>Olá, ${usuario.nome}!</p>
+        <p>Olá, ${nomeHtml}!</p>
         <p>Recebemos uma solicitação para redefinir sua senha.</p>
         <p>O link abaixo é válido por <strong>30 minutos</strong> e pode ser usado apenas uma vez.</p>
         <p>

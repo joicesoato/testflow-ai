@@ -1,10 +1,10 @@
 {
   "name": "auth-service",
   "version": "1.0.0",
-  "description": "",
+  "description": "Servi\u00e7o de autentica\u00e7\u00e3o do TestFlow AI",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --check index.js",
     "start": "node index.js"
   },
   "keywords": [],

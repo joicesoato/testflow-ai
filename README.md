@@ -1,158 +1,186 @@
-# TestFlow AI — Automação inteligente de testes de APIs
+# TestFlow AI
 
-Transforme requisitos de software em testes de APIs REST executáveis e relatórios de qualidade, com auxílio de inteligência artificial.
+Plataforma SaaS para organizar projetos, estruturar casos de teste e acompanhar execuções de APIs REST, com evolução planejada para geração assistida por inteligência artificial.
 
-Projeto desenvolvido para a disciplina ISW055 — Introdução à Computação em Nuvem, da FATEC, no semestre 2026.2, sob orientação do professor Allan Lincoln Rodrigues Siriani.
-
+Projeto da disciplina **ISW055 — Introdução à Computação em Nuvem**, CST em Sistemas Inteligentes, FATEC Pompeia, semestre 2026.2. Orientação: Allan Lincoln Rodrigues Siriani.  
 Professor: https://github.com/siriani
 
-## 1. A dor que queremos resolver
+> **Estado desta entrega:** base visual e estrutural do MVP. A landing page e o servidor web estão implementados. As APIs de domínio, autenticação integrada à interface, execução real de requisições, auditoria de negócio e upload de evidências ainda precisam ser conectados e testados. Não apresentar esta versão como produto funcional completo.
 
-Pequenas empresas de desenvolvimento de software, freelancers e equipes que trabalham com APIs REST precisam verificar continuamente se suas funcionalidades estão funcionando como esperado.
+## 1. Problema e proposta de valor
 
-Quando uma API recebe uma atualização, é necessário conferir respostas, códigos HTTP, dados retornados e regras de negócio. Parte desse trabalho é feita manualmente, com scripts individuais, ferramentas de requisições ou planilhas para registrar os resultados.
+Pequenas equipes e profissionais que desenvolvem APIs REST repetem verificações manualmente, mantêm scripts dispersos e registram resultados em ferramentas diferentes. O TestFlow AI propõe reunir o ciclo de qualidade em um só lugar:
 
-Esse processo pode consumir tempo, dificultar a repetição dos testes e deixar falhas sem documentação adequada. Quando uma integração apresenta problemas, o desenvolvedor também precisa investigar o que aconteceu e comunicar os resultados para a equipe ou para o cliente.
+**Projeto → Caso de teste → Execução → Evidência**
 
-O TestFlow AI pretende reduzir esse esforço permitindo que o desenvolvedor descreva uma funcionalidade ou forneça requisitos e receba uma sugestão estruturada de casos de teste. Após revisar os casos, poderá executá-los em APIs de ambientes autorizados e consultar os resultados em um único lugar.
+A plataforma pretende reduzir o trabalho de preparação e documentação dos testes, mantendo histórico e rastreabilidade.
 
-**Quem sofre com o problema:** profissionais e pequenas equipes que desenvolvem sistemas web e APIs, especialmente quando não possuem uma equipe dedicada de garantia da qualidade (QA).
+## 2. Público-alvo
 
-**Quando a dor aparece:** durante o desenvolvimento de novas funcionalidades, correções, manutenção e preparação de versões para publicação.
+- Desenvolvedores freelancers.
+- Pequenas software houses.
+- Equipes de desenvolvimento que não possuem uma equipe dedicada de QA.
+- Profissionais que precisam repetir testes de integração e validar APIs REST.
 
-**Custo atual:** tempo de desenvolvimento dedicado à preparação e repetição de testes, retrabalho causado por falhas não identificadas e esforço para documentar resultados. O valor financeiro e o tempo efetivamente gastos serão investigados durante a validação com potenciais usuários.
+A persona, os concorrentes, as hipóteses de preço e as métricas de negócio estão detalhados em [DOCUMENTACAO.md](DOCUMENTACAO.md). São hipóteses acadêmicas a validar, não resultados de pesquisa comprovados.
 
-**Como resolvem hoje:** ferramentas de requisições HTTP, scripts automatizados, frameworks de teste, planilhas, documentação manual e conferências realizadas diretamente pelos desenvolvedores.
+## 3. Escopo do MVP
 
-## 2. Persona
+### Incluído nesta base
+- Identidade visual e landing page responsiva.
+- Estrutura de frontend React, TypeScript e Vite.
+- Servidor Node.js/Express com Helmet, rate limit básico, health check e entrega dos arquivos estáticos.
+- Arquitetura planejada para MariaDB, serviço de autenticação, serviço de logs, Redis e MinIO.
+- Migração de domínio com quatro tabelas relacionadas.
+- Documentação de segurança, arquitetura, configuração e próximos passos.
 
-**Persona fictícia: Rafael, 27 anos, desenvolvedor freelancer.**
+### Próxima etapa de implementação
+- APIs CRUD de projetos e casos de teste.
+- APIs de execução e histórico.
+- Autorização por papel e isolamento por proprietário no backend.
+- Autenticação da interface com o auth-service.
+- Auditoria de eventos de negócio.
+- Upload e recuperação de evidências no MinIO.
+- Testes automatizados, integração e validação em ambiente de homologação.
+- Integração de IA e Stripe em etapas posteriores.
 
-Rafael desenvolve sistemas web para pequenos negócios e precisa integrar formulários, cadastros, autenticação e serviços externos. Ele trabalha em vários projetos e nem sempre conta com um profissional de QA para revisar suas entregas.
+## 4. Papéis e permissões planejados
 
-Antes de publicar uma atualização, Rafael verifica manualmente algumas rotas, executa scripts que já possui e anota os resultados em documentos separados. Quando altera uma funcionalidade, precisa lembrar quais verificações devem ser repetidas.
+| Ação | Admin | Analista | Desenvolvedor |
+|---|---:|---:|---:|
+| Listar e visualizar projetos próprios | Sim | Sim | Sim |
+| Criar/editar projetos próprios | Sim | Sim | Não |
+| Listar e visualizar casos próprios | Sim | Sim | Sim |
+| Criar/editar casos próprios | Sim | Sim | Não |
+| Criar e consultar execuções próprias | Sim | Sim | Sim |
+| Consultar e enviar evidências próprias | Sim | Sim | Sim |
+| Consultar logs administrativos | Sim | Não | Não |
 
-O problema aparece quando ele precisa entregar rapidamente um projeto sem deixar de verificar funcionalidades importantes. Repetir os mesmos testes consome tempo, e preparar um relatório para o cliente acrescenta mais uma tarefa.
+O papel `admin` não deve ignorar o isolamento de dados privados de outros usuários. Toda consulta e alteração deverá validar a propriedade no servidor. Uma tentativa de acessar um registro de outra conta deverá retornar `404` ou `403`, sem revelar dados.
 
-Rafael procuraria uma ferramenta que organizasse os cenários de teste, executasse verificações de API e produzisse um relatório compreensível, sem exigir que ele configurasse todo o processo manualmente.
+**Importante:** esta matriz é a especificação de implementação. Não considerar as permissões entregues enquanto os middlewares e testes de autorização das APIs não estiverem concluídos.
 
-Essa persona representa uma hipótese inicial de cliente. Sua rotina e suas necessidades deverão ser confrontadas com entrevistas e testes do produto.
+## 5. Arquitetura
 
-## 3. Concorrentes e alternativas
+```mermaid
+flowchart LR
+  B[Navegador] -->|HTTPS| WEB[Frontend React + Express :3000]
+  WEB --> AUTH[Auth Service :3001]
+  WEB --> API[APIs de domínio - próxima etapa]
+  API --> DB[(MariaDB)]
+  API --> OBJ[MinIO - evidências]
+  API --> AUD[Log Service :3002]
+  AUD --> REDIS[(Redis Streams)]
+  P[Portainer] -. gerencia .-> WEB
+  P -. gerencia .-> AUTH
+  P -. gerencia .-> AUD
+```
 
-O TestFlow AI não será a primeira ferramenta de testes de software. Sua oportunidade está em simplificar o fluxo entre a descrição de um requisito, a geração de casos de teste, a execução e a apresentação dos resultados.
+### Tecnologias
+- Frontend: React 19, TypeScript, Vite e React Router.
+- Backend web: Node.js 22 e Express.
+- Autenticação planejada: serviço Node.js, JWT e bcrypt.
+- Persistência: MariaDB.
+- Auditoria planejada: serviço de logs e Redis Streams.
+- Arquivos: MinIO.
+- Containers: Docker e Docker Compose.
+- Gerenciamento de implantação: Portainer.
+- CI/CD: GitHub Actions e Docker Hub.
 
-| Concorrente ou alternativa | O que oferece | Oportunidade para o TestFlow AI |
-|---|---|---|
-| Postman | Criação e execução de requisições HTTP, organização de coleções e recursos de teste de APIs | Simplificar a criação inicial de verificações a partir de requisitos em linguagem natural e centralizar o fluxo de geração e relatório |
-| Bruno | Cliente de API com coleções e suporte a fluxos de trabalho de testes | Reduzir a configuração manual inicial para usuários que precisam transformar requisitos em verificações |
-| Swagger / OpenAPI | Documentação e descrição estruturada de APIs; ferramentas do ecossistema permitem explorar e testar endpoints | Usar a especificação da API como entrada para sugerir casos de teste e resultados esperados |
-| Scripts e frameworks de teste | Automação flexível e integração com o processo de desenvolvimento | Oferecer uma experiência mais acessível para quem não quer escrever toda a estrutura de testes manualmente |
-| Planilhas e documentação manual | Registro de cenários, resultados e evidências | Centralizar os registros e gerar relatórios a partir das execuções realizadas |
+A infraestrutura mantém a rede Docker e os volumes existentes quando necessário para preservar os recursos já provisionados no ambiente acadêmico. Os nomes dos containers locais foram atualizados para TestFlow AI.
 
-As alternativas existentes são úteis e algumas já oferecem automação avançada ou recursos de inteligência artificial. O objetivo não é afirmar que sejam inferiores em todos os aspectos, mas investigar se existe espaço para uma experiência mais simples e integrada para pequenas equipes.
+## 6. Modelo de dados
 
-## 4. Proposta de valor
+A migração `database/migration-v8-testflow.sql` cria:
 
-**O TestFlow AI transforma requisitos de APIs REST em casos de teste revisáveis, executa verificações em ambientes autorizados e organiza os resultados em relatórios, reduzindo o trabalho manual de preparação e documentação dos testes.**
+- `projetos`: projetos pertencentes a um usuário.
+- `casos_teste`: cenários vinculados ao projeto e ao mesmo proprietário.
+- `execucoes`: histórico de execução vinculado ao caso, projeto e proprietário.
+- `evidencias`: metadados e chave do objeto armazenado no MinIO, vinculados à execução.
 
-O diferencial proposto é reunir geração assistida por IA, execução controlada e histórico de resultados em um fluxo acessível. A qualidade das gerações, o tempo economizado e a disposição dos clientes para pagar serão medidos durante a validação.
+As chaves estrangeiras compostas reforçam a consistência de propriedade entre os registros. A aplicação ainda precisa aplicar filtros de proprietário em todas as APIs; constraints não substituem autorização.
 
-## 5. Modelo de receita com Stripe
+### Aplicação da migração
+1. Fazer backup do banco utilizado pelo ambiente.
+2. Confirmar que `usuarios.id` é compatível (`INT`) e que `usuarios` usa InnoDB.
+3. Executar `database/migration-v8-testflow.sql` uma única vez no banco correto.
+4. Conferir a criação das quatro tabelas.
+5. Não executar em produção sem backup e sem confirmar o banco/stack de destino.
 
-O modelo de negócio será Software as a Service (SaaS), com acesso pela internet e possibilidade de assinatura mensal. O Stripe será utilizado na etapa de monetização prevista para a Atividade 11 da disciplina.
+O arquivo `database/seed-testflow.sql` é um guia de seed opcional. Ele não cria contas fictícias nem insere dados automaticamente.
 
-Os preços abaixo são hipóteses iniciais para testar a aceitação do mercado.
+## 7. Execução local
 
-| Plano | Preço mensal hipotético | Limites e benefícios |
-|---|---:|---|
-| Free | R$ 0 | Um projeto ativo, limite mensal de gerações com IA, quantidade limitada de execuções e relatórios básicos |
-| Pro | R$ 59,90 | Mais projetos e execuções, histórico ampliado, relatórios exportáveis e maior limite de gerações |
-| Equipe | R$ 249,90 | Projetos compartilhados, múltiplos usuários, permissões de equipe, auditoria e limites ampliados |
+Requisitos: Node.js 22+, npm e Docker Desktop (para a stack completa).
 
-**Por que alguém pagaria pelo Pro?**
+```bash
+cp .env.example .env
+```
 
-O plano pago deverá oferecer economia de tempo, maior volume de testes e histórico útil para projetos recorrentes. Para pequenas equipes, o plano Equipe poderá agregar colaboração e padronização das verificações.
+Preencha `.env` com credenciais locais fortes. Não reutilize credenciais de produção.
 
-Os limites exatos de cada plano serão definidos depois de medir o custo da IA, das execuções e da infraestrutura.
+```bash
+npm ci
+npm --prefix frontend ci
+npm --prefix frontend run build
+npm start
+```
 
-A integração com o Stripe deverá contemplar criação de sessão de checkout, confirmação de pagamentos por webhook verificado, atualização do plano e tratamento de cancelamentos. O sistema não deverá liberar benefícios apenas porque o usuário retornou à página de pagamento.
+A aplicação web utiliza a porta `3000`. Verificação de saúde:
 
-No protótipo inicial, a prioridade será demonstrar o fluxo principal do produto. A cobrança real será implementada após a validação técnica e a preparação da integração comercial.
+```bash
+curl http://localhost:3000/health
+```
 
-## 6. Métricas de sucesso
+O endpoint `/api/status` informa explicitamente que as APIs de domínio ainda estão pendentes.
 
-As métricas serão divididas entre uso do produto, qualidade técnica e viabilidade comercial.
+Para subir a stack Docker local, revise primeiro as variáveis e os volumes em `docker-compose.yml`. Não execute `docker compose down -v` em ambientes que contenham dados importantes.
 
-| Métrica | O que mede |
-|---|---|
-| Cadastros | Interesse inicial pelo produto |
-| Projetos ativos | Quantidade de usuários que utilizam o fluxo de testes |
-| Suítes geradas e executadas | Utilização efetiva da funcionalidade principal |
-| Taxa de aproveitamento dos casos gerados | Proporção de casos considerados úteis após revisão |
-| Tempo de preparação dos testes | Possível redução do esforço manual |
-| Usuários ativos recorrentes | Frequência de utilização ao longo do tempo |
-| Assinantes pagos | Conversão de usuários para planos pagos |
-| MRR | Receita recorrente mensal das assinaturas |
-| Retenção e cancelamentos | Capacidade de manter clientes ao longo do tempo |
-| Custo por execução | Sustentabilidade operacional do serviço |
+## 8. Configuração de implantação
 
-No início, será priorizado um piloto com um pequeno grupo de usuários. As metas numéricas serão estabelecidas após obter uma linha de base de uso, custos e qualidade. Não serão tratados como resultados comprovados números que ainda não foram medidos.
+- O arquivo `docker-compose.portainer.yml` mantém a porta externa previamente utilizada (`8211:3000`) e a rede existente.
+- As imagens foram renomeadas para `joicesoato/testflow-ai`, `joicesoato/testflow-ai-auth` e `joicesoato/testflow-ai-log`.
+- Antes do deploy, criar/verificar os três repositórios no Docker Hub e conferir se as imagens publicadas são públicas ou se o Portainer possui credenciais para acessá-las.
+- Configurar as variáveis do Portainer usando os valores já existentes e válidos no ambiente.
+- Não alterar domínio, porta, volumes ou credenciais sem validar com o responsável pela infraestrutura.
+- O deploy deve ocorrer somente depois da revisão do workflow, migração, variáveis e backup.
 
-## 7. Lean Canvas
+## 9. Segurança
 
-| Bloco | Definição para o TestFlow AI |
-|---|---|
-| **Problema** | Preparação repetitiva de testes de APIs; execução e registro dispersos; dificuldade de documentar resultados e investigar falhas. Hoje, os clientes utilizam ferramentas de API, scripts, planilhas e processos manuais. |
-| **Segmentos de clientes** | Freelancers, pequenas software houses e equipes de desenvolvimento que trabalham com APIs REST. Os primeiros usuários a buscar serão profissionais com testes repetitivos e sem equipe dedicada de QA. |
-| **Proposta única de valor** | Transformar requisitos de APIs em testes revisáveis, executáveis e documentados em um único fluxo assistido por IA. |
-| **Solução** | 1. Gerar casos de teste a partir de requisitos. 2. Executar verificações controladas de APIs. 3. Apresentar resultados, evidências e relatórios com histórico. |
-| **Canais** | GitHub, demonstrações do produto, comunidades de desenvolvedores, conteúdo técnico, contatos com pequenas software houses e indicações de usuários-piloto. |
-| **Fontes de receita** | Plano Free para experimentação; Pro por R$ 59,90/mês; Equipe por R$ 249,90/mês, inicialmente como hipóteses. Assinaturas e cobrança serão integradas ao Stripe. |
-| **Estrutura de custos** | Hospedagem, banco de dados, armazenamento, consumo de IA, execução de testes, tarifas de pagamento, manutenção, suporte e tempo de desenvolvimento. |
-| **Métricas-chave** | Cadastros, projetos ativos, testes gerados e executados, aproveitamento dos casos, usuários recorrentes, assinantes pagos, MRR, retenção e custo por execução. |
-| **Vantagem injusta** | Ainda não comprovada. A vantagem potencial está em desenvolver um fluxo simples voltado às necessidades de pequenas equipes e acumular conhecimento sobre qualidade dos casos gerados, padrões de falha e necessidades reais dos usuários. |
+Consulte [SECURITY.md](SECURITY.md) para o checklist de segurança e limites conhecidos desta versão. O resultado das verificações realizadas e pendentes está em [VALIDACAO.md](VALIDACAO.md).
 
-## 8. Reaproveitamento da arquitetura cloud
+Regras essenciais:
+- Nunca versionar `.env`, tokens, senhas, chaves JWT, credenciais MinIO ou segredos Stripe.
+- Utilizar HTTPS no ambiente publicado.
+- Gerar segredos longos, aleatórios e diferentes por ambiente.
+- Validar e autorizar toda operação no backend.
+- Aplicar isolamento por `usuario_id` em consultas, alterações e exclusões.
+- Validar método, URL, tamanho e conteúdo dos arquivos antes de executar requisições ou fazer upload.
+- Proteger execução HTTP contra SSRF, redirecionamentos maliciosos, acesso a metadados e redes privadas.
+- Registrar eventos sem incluir senhas, tokens, cookies ou conteúdo sensível.
+- Fazer backup antes de qualquer migração.
 
-O projeto utiliza como ponto de partida a arquitetura desenvolvida anteriormente na disciplina ISW055. O objetivo é substituir o domínio de catálogo de filmes por um sistema de automação de testes, preservando os serviços e adaptando as funcionalidades ao novo negócio.
+## 10. CI/CD
 
-| Peça do projeto atual | O que vira no TestFlow AI |
-|---|---|
-| Catálogo de filmes e integração TMDB | Gestão de projetos de teste, requisitos, casos de teste e execuções |
-| Microsserviço de autenticação | Cadastro, login, autenticação e recuperação de acesso dos usuários |
-| RBAC (papéis e permissões) | Papéis de usuário e administrador; posteriormente, permissões de membros de equipes |
-| MariaDB | Armazenamento de usuários, projetos, requisitos, casos, execuções, resultados e planos |
-| Serviço de logs com Redis Streams | Auditoria de eventos, como criação de projetos, geração de testes, execuções e alterações de plano |
-| Perfil e upload com MinIO | Armazenamento de especificações, relatórios e evidências das execuções, além dos recursos de perfil necessários |
-| Plano Premium e Stripe | Planos Free, Pro e Equipe, com limites de utilização e assinaturas |
-| Docker e Docker Compose | Empacotamento e execução dos componentes da aplicação |
-| Portainer e infraestrutura existente | Implantação do novo produto no ambiente definido pela disciplina, preservando a stack e o domínio atuais |
-| Health checks e dependências entre serviços | Verificação de disponibilidade da API, autenticação, logs e demais componentes necessários |
-| Swagger / OpenAPI, se disponível | Documentação dos endpoints do próprio TestFlow AI e possível importação de especificações das APIs testadas |
-| CI/CD, se configurado | Validação automatizada das alterações e apoio à publicação de novas versões |
-| Observabilidade, se implementada | Monitoramento de erros, disponibilidade, execuções e consumo dos recursos |
+O workflow em `.github/workflows/ci-cd.yml` prevê build/testes, publicação das imagens e webhook opcional do Portainer. Para funcionar, configure no GitHub Actions os secrets necessários, especialmente `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN` e, se utilizado, `PORTAINER_WEBHOOK`.
 
-O reaproveitamento será feito por adaptação, não pela simples troca de nomes. As tabelas, regras de negócio, rotas e funcionalidades específicas do catálogo serão substituídas pelas necessidades do novo produto.
+O workflow precisa ser validado em execução real no GitHub Actions. A existência do YAML não comprova que o deploy foi realizado.
 
-A aplicação deverá utilizar um banco de dados e configurações compatíveis com o novo domínio, respeitando as instruções de implantação da disciplina. Não serão reutilizados dados pessoais dos usuários do catálogo como dados de clientes do TestFlow AI.
+## 11. Critérios de aceite antes de considerar o SaaS funcional
 
-O primeiro MVP priorizará uma API principal modular, MariaDB, autenticação, geração de testes e execução controlada. Redis, MinIO e os demais componentes serão integrados conforme a necessidade do fluxo e os requisitos acadêmicos. A arquitetura existente deverá continuar sendo aproveitada, sem criar uma nova stack ou solicitar outro domínio.
+- [ ] Build de frontend e containers aprovado.
+- [ ] Migração aplicada com backup e conferência do schema.
+- [ ] Cadastro, login e recuperação de senha testados.
+- [ ] CRUD de projetos e casos testado.
+- [ ] Execução de API com timeout, limites e proteção SSRF testada.
+- [ ] 3 papéis testados com respostas `403` nas ações proibidas.
+- [ ] Isolamento entre dois usuários testado em leitura, edição e exclusão.
+- [ ] Eventos de auditoria com autor e data/hora conferidos.
+- [ ] Upload e recuperação de evidências no MinIO testados.
+- [ ] Landing pública acessível sem login.
+- [ ] Stack Portainer saudável e URL pública validada.
+- [ ] Prints de evidência e issue de entrega publicados.
 
-## Próximas etapas
+## 12. Licença e uso acadêmico
 
-1. Criar um novo repositório público com o nome do produto e espelhar o repositório anterior, preservando o histórico de commits.
-2. Substituir este README pelo plano de negócio e registrar o commit da documentação.
-3. Criar pelo menos cinco issues para organizar as próximas entregas.
-4. Atualizar o README do repositório anterior com o link para o novo projeto.
-5. Registrar a entrega em uma issue intitulada **Entrega — Fork e plano de negócio**, mencionando `@siriani`, com os links e as evidências solicitadas.
-6. Na Atividade 10, evoluir a aplicação para o novo negócio e implantá-la na infraestrutura existente.
-7. Na Atividade 11, concluir a integração de assinaturas com Stripe.
-
-O desenvolvimento seguirá de forma incremental, distinguindo funcionalidades planejadas, implementadas e efetivamente validadas.
-
----
-
-Projeto acadêmico: ISW055 — Introdução à Computação em Nuvem, FATEC, 2026.2.
-
-Professor: [Allan Lincoln Rodrigues Siriani](https://github.com/siriani).
+Projeto acadêmico desenvolvido para a disciplina ISW055 — FATEC, semestre 2026.2.

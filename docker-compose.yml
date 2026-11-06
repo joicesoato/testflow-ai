@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: catalogo-app
+    container_name: testflow-ai-app
     environment:
       PORT: ${PORT:-3000}
       APP_URL: ${APP_URL}
@@ -20,8 +20,6 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       SESSION_SECRET: ${SESSION_SECRET}
       INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET}
-
-      TMDB_API_KEY: ${TMDB_API_KEY}
       TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
 
       MAIL_HOST: ${MAIL_HOST}
@@ -33,7 +31,7 @@ services:
       MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
-      MINIO_BUCKET: ${MINIO_BUCKET:-profile-photos}
+      MINIO_BUCKET: ${MINIO_BUCKET:-testflow-evidencias}
       MINIO_REGION: ${MINIO_REGION:-us-east-1}
       STRIPE_SECRET_KEY: "${STRIPE_SECRET_KEY}"
       STRIPE_WEBHOOK_SECRET: "${STRIPE_WEBHOOK_SECRET}"
@@ -75,7 +73,7 @@ services:
     build:
       context: ./auth-service
       dockerfile: Dockerfile
-    container_name: catalogo-auth
+    container_name: testflow-ai-auth
     environment:
       AUTH_PORT: ${AUTH_PORT:-3001}
       APP_URL: ${APP_URL}
@@ -122,7 +120,7 @@ services:
     build:
       context: ./log-service
       dockerfile: Dockerfile
-    container_name: catalogo-log
+    container_name: testflow-ai-log
     environment:
       LOG_PORT: ${LOG_PORT:-3002}
       REDIS_URL: redis://redis:6379
@@ -153,15 +151,15 @@ services:
 
   db:
     image: mariadb:11
-    container_name: catalogo-db
+    container_name: testflow-ai-db
     environment:
-      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD obrigatoria}
       MARIADB_DATABASE: ${DB_NAME}
       MARIADB_USER: ${DB_USER}
       MARIADB_PASSWORD: ${DB_PASSWORD}
 
     ports:
-      - "3307:3306"
+      - "127.0.0.1:3307:3306"
 
     volumes:
       - db_data:/var/lib/mysql
@@ -187,7 +185,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: catalogo-redis
+    container_name: testflow-ai-redis
     command:
       [
         "redis-server",
@@ -219,7 +217,7 @@ services:
 
   minio:
     image: soldevelo/minio:2026.7
-    container_name: catalogo-minio
+    container_name: testflow-ai-minio
 
     command:
       - server
@@ -228,12 +226,12 @@ services:
       - ":9001"
 
     environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY obrigatoria}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?MINIO_SECRET_KEY obrigatoria}
 
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
 
     tmpfs:
       - /data:uid=1001,gid=1001,mode=700

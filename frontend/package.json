@@ -1,5 +1,5 @@
 {
-  "name": "catalogo-tom-hanks-frontend",
+  "name": "testflow-ai-frontend",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -20,5 +20,6 @@
     "@vitejs/plugin-react": "^4.7.0",
     "typescript": "~5.8.3",
     "vite": "^6.3.5"
-  }
+  },
+  "description": "Interface web do TestFlow AI"
 }

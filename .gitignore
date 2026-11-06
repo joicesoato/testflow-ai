@@ -4,3 +4,8 @@ node_modules/
 npm-debug.log*
 # Build artifacts
 frontend/dist/
+
+.env.*
+!.env.example
+coverage/
+*.log

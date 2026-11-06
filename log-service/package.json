@@ -1,14 +1,16 @@
 {
-  "name": "catalogo-filmes-log-service",
+  "name": "testflow-ai-log-service",
   "version": "1.0.0",
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "node --check index.js"
   },
   "dependencies": {
     "express": "^5.2.1",
     "helmet": "^8.3.0",
     "redis": "^5.8.2"
-  }
+  },
+  "description": "Servi\u00e7o de auditoria do TestFlow AI"
 }

@@ -1,11 +1,12 @@
 {
-  "name": "catalogo-filmes-tom-hanks",
+  "name": "testflow-ai",
   "version": "1.0.0",
-  "description": "Catálogo de filmes do Tom Hanks com TMDB, login, favoritos e comentários",
+  "description": "Plataforma SaaS para organiza\u00e7\u00e3o e automa\u00e7\u00e3o de testes de APIs REST",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test": "node --check server.js && node --check auth-service/index.js && node --check log-service/index.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
