@@ -13,6 +13,10 @@ Este documento descreve controles presentes na base entregue e controles obrigat
 - Health check sem expor segredos ou configuração.
 - `.env` ignorado pelo Git (confirmar `.gitignore` antes do commit).
 - Arquivos estáticos servidos pelo mesmo host.
+- Rotas de projetos/casos/execuções validam o token no auth-service e filtram registros pelo proprietário.
+- O executor aceita somente endpoints relativos no mesmo domínio da URL base, verifica DNS/IP, bloqueia endereços locais/privados, não segue redirects, aplica timeout e limita o corpo de resposta.
+- A chave Gemini é lida pelo backend via variável de ambiente e não é enviada ao frontend.
+- A verificação de e-mail pode ser desativada somente em desenvolvimento por `EMAIL_VERIFICATION_REQUIRED=false`; em produção deve permanecer habilitada.
 
 ### Controles obrigatórios antes de publicar APIs
 1. **Autenticação:** JWT com algoritmo explicitamente permitido, expiração curta, validação de issuer/audience quando aplicável, rotação e segredo forte; senhas com bcrypt/Argon2 e política adequada.

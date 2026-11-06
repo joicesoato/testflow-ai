@@ -36,6 +36,8 @@ services:
       STRIPE_SECRET_KEY: "${STRIPE_SECRET_KEY}"
       STRIPE_WEBHOOK_SECRET: "${STRIPE_WEBHOOK_SECRET}"
       STRIPE_PRICE_ID: "${STRIPE_PRICE_ID}"
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.8-flash}
 
     ports:
       - "3000:3000"
@@ -77,6 +79,7 @@ services:
     environment:
       AUTH_PORT: ${AUTH_PORT:-3001}
       APP_URL: ${APP_URL}
+      EMAIL_VERIFICATION_REQUIRED: ${EMAIL_VERIFICATION_REQUIRED:-true}
 
       DB_HOST: ${DB_HOST:-db}
       DB_PORT: ${DB_PORT:-3306}

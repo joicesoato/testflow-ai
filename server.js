@@ -5,6 +5,7 @@ const express = require("express");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const projetosRouter = require("./routes/projetos");
+const casosRouter = require("./routes/casos");
 const authRouter = require("./routes/auth");
 
 const app = express();
@@ -51,19 +52,21 @@ app.get("/health", (_req, res) => {
     status: "ok",
     service: "testflow-ai-web",
     timestamp: new Date().toISOString(),
-    stage: "frontend-scaffold"
+    stage: "mvp-api-tests"
   });
 });
 
 app.use("/api/auth", authRouter);
 app.use("/api/projetos", projetosRouter);
+app.use("/api/projetos", casosRouter);
 
 app.get("/api/status", (_req, res) => {
   res.status(200).json({
     product: "TestFlow AI",
-    stage: "frontend-scaffold",
-    api: "pending",
-    message: "As APIs de domínio serão integradas na próxima etapa."
+    stage: "mvp-api-tests",
+    api: "projects-cases-executions",
+    ai: process.env.GEMINI_API_KEY ? "gemini-configured" : "gemini-not-configured",
+    message: "APIs de projetos, casos de teste e execução disponíveis."
   });
 });
 

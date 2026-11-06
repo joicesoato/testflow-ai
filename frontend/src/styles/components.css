@@ -49,3 +49,52 @@
 .danger:hover {
   background: #351d26;
 }
+
+
+/* TestFlow AI — casos de teste e execução */
+.case-ai-panel, .case-create-panel, .execution-result {
+  background: var(--panel, #111c2a);
+  border: 1px solid var(--line, rgba(255,255,255,.1));
+  border-radius: 16px;
+  padding: 22px;
+  margin: 18px 0;
+}
+.case-ai-panel h3, .case-create-panel h3, .execution-result h3 { margin: 7px 0; }
+.case-ai-panel p, .list-heading p { color: var(--muted, #9aa8b8); margin: 5px 0 14px; }
+.case-ai-panel label, .case-form label { display: grid; gap: 7px; color: var(--muted, #b4bfcc); font-size: .9rem; }
+.case-ai-panel textarea, .case-form input, .case-form select {
+  width: 100%; color: inherit; background: rgba(3,10,18,.45);
+  border: 1px solid var(--line, rgba(255,255,255,.15)); border-radius: 9px;
+  padding: 11px 12px; font: inherit;
+}
+.case-ai-panel .primary { margin-top: 14px; }
+.case-ai-panel small { display: block; margin-top: 10px; color: #e5b75c; }
+.case-form { display: grid; gap: 14px; }
+.case-fields { display: grid; grid-template-columns: 130px minmax(180px,1fr) 150px; gap: 12px; }
+.case-form .secondary { justify-self: start; }
+.case-list { display: grid; gap: 10px; margin-top: 18px; }
+.case-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 16px 18px; border: 1px solid var(--line, rgba(255,255,255,.1));
+  border-radius: 12px; background: rgba(255,255,255,.025);
+}
+.case-item-main, .case-item-actions { display: flex; align-items: center; gap: 12px; }
+.case-item-main > div { display: grid; gap: 5px; }
+.case-item-main small { color: var(--muted, #9aa8b8); }
+.method-tag, .status-tag, .case-count {
+  border-radius: 999px; padding: 5px 9px; font-size: .72rem; font-weight: 700;
+  background: rgba(255,255,255,.08); color: #dbe6f2; text-transform: uppercase;
+}
+.status-tag.sucesso { color: #9de2b5; background: rgba(55,175,105,.14); }
+.status-tag.falha, .status-tag.erro { color: #ffaaa5; background: rgba(220,75,65,.14); }
+.small-button { padding: 8px 12px; font-size: .82rem; }
+.text-button { background: transparent; border: 0; color: var(--muted, #9aa8b8); cursor: pointer; }
+.execution-result pre {
+  max-height: 260px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+  background: rgba(0,0,0,.25); border-radius: 9px; padding: 14px; color: #c9d6e5;
+}
+@media (max-width: 700px) {
+  .case-fields { grid-template-columns: 1fr; }
+  .case-item { align-items: flex-start; flex-direction: column; }
+  .case-item-actions { flex-wrap: wrap; }
+}

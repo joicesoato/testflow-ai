@@ -1,22 +1,25 @@
 # Relatório de validação da entrega
 
-## Verificações realizadas neste ambiente
+## Verificações realizadas durante a preparação do ZIP
 
 | Verificação | Resultado | Observação |
 |---|---|---|
-| `npm test` (sintaxe Node) | Aprovado | `server.js`, `auth-service/index.js` e `log-service/index.js` passaram em `node --check`. |
-| YAML dos Compose e workflow | Aprovado | Os três arquivos foram carregados por parser YAML. |
-| Parsing/transpilação TSX | Aprovado | O TypeScript conseguiu analisar e transpilar `App.tsx`; isso não substitui typecheck completo. |
-| Remoção de referências ao domínio antigo | Aprovado na busca estática | Não foram encontrados termos Tom Hanks/TMDB/filmes nas fontes ativas consultadas. Migrações históricas não relacionadas foram mantidas quando necessárias. |
+| `npm test` | Aprovado | `node --check` passou para servidor, rotas de projetos/casos, auth-service e log-service. |
+| YAML Docker Compose | Aprovado | `docker-compose.yml` e `docker-compose.portainer.yml` foram analisados por parser YAML. |
+| Sintaxe TSX | Parcial | O parser TypeScript não apontou erros de sintaxe. O typecheck completo depende das dependências React instaladas. |
+| Integração Gemini | Implementada, pendente de chave no ambiente | A chave é lida do backend por `GEMINI_API_KEY`; não foi usada nem incluída no ZIP. |
+| Banco e migração v8 | Pendente no Codespace | A migração precisa ser aplicada no banco correto, após backup e inicialização do schema. |
+| Execução HTTP | Implementada, pendente de teste integrado | Validar com uma API pública de testes após iniciar a stack e aplicar a migração. |
 
 ## Verificações não concluídas
 
-- **Build React/TypeScript:** não executado integralmente neste ambiente porque a instalação dos pacotes do frontend ficou sem resposta ao acessar o registry npm. Execute `npm --prefix frontend ci && npm --prefix frontend run build` no Codespaces ou GitHub Actions.
-- **Docker Compose/build:** Docker não está instalado no ambiente de validação atual. Execute `docker compose config --quiet` e `docker compose build` no Codespaces/servidor com Docker.
-- **Banco de dados:** migração e seed não foram executados. É necessário backup, conexão ao MariaDB correto e confirmação do engine/charset da tabela `usuarios`.
-- **Segurança dinâmica:** não foi realizado pentest, DAST, teste de SSRF, teste de IDOR com duas contas ou `npm audit` com acesso ao registry. Os controles pendentes estão descritos em `SECURITY.md`.
+- **Build React/TypeScript:** não foi possível concluir a instalação das dependências do frontend neste ambiente de preparação. Execute `npm --prefix frontend ci && npm --prefix frontend run build` no Codespaces.
+- **Docker Compose/build:** os arquivos YAML foram analisados, mas não foi possível iniciar containers neste ambiente. Execute `docker compose config --quiet` e `docker compose up --build` no Codespaces.
+- **Banco de dados:** não foi executada a migração em um MariaDB ativo.
+- **Gemini:** a chamada real depende da chave válida configurada como segredo no Codespace e dos limites/estado da API Google.
+- **Segurança dinâmica:** não foi realizado pentest, teste com duas contas, teste de DNS rebinding ou egress firewall. A proteção SSRF da aplicação deve ser complementada por controles de rede.
 - **Deploy:** não foi publicado Docker Hub nem executado redeploy no Portainer.
 
 ## Interpretação
 
-Esta é uma base organizada de frontend e infraestrutura para continuar a implementação. Não declarar a aplicação como pronta para produção nem como atendendo integralmente aos critérios de CRUD, execução, multi-tenant, auditoria e evidências até que as APIs sejam implementadas e os testes pendentes sejam aprovados.
+Esta versão implementa o fluxo de casos de teste, geração assistida pelo Gemini e execução HTTP, mas ainda exige a validação integrada no Codespace. Não declarar produção pronta antes de concluir os testes pendentes, revisar permissões e validar a infraestrutura.

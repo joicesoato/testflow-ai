@@ -1,186 +1,179 @@
 # TestFlow AI
 
-Plataforma SaaS para organizar projetos, estruturar casos de teste e acompanhar execuções de APIs REST, com evolução planejada para geração assistida por inteligência artificial.
+Plataforma para organizar projetos, gerar casos de teste com IA e executar verificações reais em APIs REST.
 
-Projeto da disciplina **ISW055 — Introdução à Computação em Nuvem**, CST em Sistemas Inteligentes, FATEC Pompeia, semestre 2026.2. Orientação: Allan Lincoln Rodrigues Siriani.  
-Professor: https://github.com/siriani
+Projeto acadêmico da disciplina **ISW055 — Introdução à Computação em Nuvem**, CST em Sistemas Inteligentes, FATEC Pompeia, semestre 2026.2.
 
-> **Estado desta entrega:** base visual e estrutural do MVP. A landing page e o servidor web estão implementados. As APIs de domínio, autenticação integrada à interface, execução real de requisições, auditoria de negócio e upload de evidências ainda precisam ser conectados e testados. Não apresentar esta versão como produto funcional completo.
+## O que está implementado nesta versão
 
-## 1. Problema e proposta de valor
+- Landing page e interface React/TypeScript.
+- Cadastro/login integrado ao serviço de autenticação.
+- CRUD de projetos com isolamento por usuário.
+- Cadastro e exclusão de casos de teste.
+- Geração de cenários com Gemini API e gravação dos casos no MariaDB.
+- Execução real de requisições HTTP a partir do backend.
+- Comparação entre status HTTP recebido e esperado.
+- Histórico de execuções persistido no MariaDB.
+- Registro de eventos no serviço de auditoria.
+- Limite de tempo e tamanho de resposta, bloqueio de destinos locais/privados e de redirecionamentos durante a execução.
 
-Pequenas equipes e profissionais que desenvolvem APIs REST repetem verificações manualmente, mantêm scripts dispersos e registram resultados em ferramentas diferentes. O TestFlow AI propõe reunir o ciclo de qualidade em um só lugar:
+**Limites desta entrega:** a IA gera casos de teste a partir do contexto informado e da URL base cadastrada. Ela não descobre automaticamente toda a documentação da API. A validação automática atual compara o status HTTP; não executa scripts arbitrários nem valida automaticamente todos os campos do JSON. Upload de evidências e cobrança Stripe não fazem parte deste MVP. A stack ainda precisa ser validada no Codespace/Portainer de destino.
 
-**Projeto → Caso de teste → Execução → Evidência**
+## Tecnologias
 
-A plataforma pretende reduzir o trabalho de preparação e documentação dos testes, mantendo histórico e rastreabilidade.
+- Node.js 22, Express 5 e `fetch` nativo.
+- React 19, TypeScript, Vite 6 e React Router.
+- MariaDB 11.
+- Serviço de autenticação JWT.
+- Serviço de logs com Redis Streams.
+- Gemini API (`generateContent`) para geração de casos.
+- Docker Compose.
 
-## 2. Público-alvo
+## Configuração no Codespaces
 
-- Desenvolvedores freelancers.
-- Pequenas software houses.
-- Equipes de desenvolvimento que não possuem uma equipe dedicada de QA.
-- Profissionais que precisam repetir testes de integração e validar APIs REST.
+### 1. Criar o arquivo `.env`
 
-A persona, os concorrentes, as hipóteses de preço e as métricas de negócio estão detalhados em [DOCUMENTACAO.md](DOCUMENTACAO.md). São hipóteses acadêmicas a validar, não resultados de pesquisa comprovados.
-
-## 3. Escopo do MVP
-
-### Incluído nesta base
-- Identidade visual e landing page responsiva.
-- Estrutura de frontend React, TypeScript e Vite.
-- Servidor Node.js/Express com Helmet, rate limit básico, health check e entrega dos arquivos estáticos.
-- Arquitetura planejada para MariaDB, serviço de autenticação, serviço de logs, Redis e MinIO.
-- Migração de domínio com quatro tabelas relacionadas.
-- Documentação de segurança, arquitetura, configuração e próximos passos.
-
-### Próxima etapa de implementação
-- APIs CRUD de projetos e casos de teste.
-- APIs de execução e histórico.
-- Autorização por papel e isolamento por proprietário no backend.
-- Autenticação da interface com o auth-service.
-- Auditoria de eventos de negócio.
-- Upload e recuperação de evidências no MinIO.
-- Testes automatizados, integração e validação em ambiente de homologação.
-- Integração de IA e Stripe em etapas posteriores.
-
-## 4. Papéis e permissões planejados
-
-| Ação | Admin | Analista | Desenvolvedor |
-|---|---:|---:|---:|
-| Listar e visualizar projetos próprios | Sim | Sim | Sim |
-| Criar/editar projetos próprios | Sim | Sim | Não |
-| Listar e visualizar casos próprios | Sim | Sim | Sim |
-| Criar/editar casos próprios | Sim | Sim | Não |
-| Criar e consultar execuções próprias | Sim | Sim | Sim |
-| Consultar e enviar evidências próprias | Sim | Sim | Sim |
-| Consultar logs administrativos | Sim | Não | Não |
-
-O papel `admin` não deve ignorar o isolamento de dados privados de outros usuários. Toda consulta e alteração deverá validar a propriedade no servidor. Uma tentativa de acessar um registro de outra conta deverá retornar `404` ou `403`, sem revelar dados.
-
-**Importante:** esta matriz é a especificação de implementação. Não considerar as permissões entregues enquanto os middlewares e testes de autorização das APIs não estiverem concluídos.
-
-## 5. Arquitetura
-
-```mermaid
-flowchart LR
-  B[Navegador] -->|HTTPS| WEB[Frontend React + Express :3000]
-  WEB --> AUTH[Auth Service :3001]
-  WEB --> API[APIs de domínio - próxima etapa]
-  API --> DB[(MariaDB)]
-  API --> OBJ[MinIO - evidências]
-  API --> AUD[Log Service :3002]
-  AUD --> REDIS[(Redis Streams)]
-  P[Portainer] -. gerencia .-> WEB
-  P -. gerencia .-> AUTH
-  P -. gerencia .-> AUD
-```
-
-### Tecnologias
-- Frontend: React 19, TypeScript, Vite e React Router.
-- Backend web: Node.js 22 e Express.
-- Autenticação planejada: serviço Node.js, JWT e bcrypt.
-- Persistência: MariaDB.
-- Auditoria planejada: serviço de logs e Redis Streams.
-- Arquivos: MinIO.
-- Containers: Docker e Docker Compose.
-- Gerenciamento de implantação: Portainer.
-- CI/CD: GitHub Actions e Docker Hub.
-
-A infraestrutura mantém a rede Docker e os volumes existentes quando necessário para preservar os recursos já provisionados no ambiente acadêmico. Os nomes dos containers locais foram atualizados para TestFlow AI.
-
-## 6. Modelo de dados
-
-A migração `database/migration-v8-testflow.sql` cria:
-
-- `projetos`: projetos pertencentes a um usuário.
-- `casos_teste`: cenários vinculados ao projeto e ao mesmo proprietário.
-- `execucoes`: histórico de execução vinculado ao caso, projeto e proprietário.
-- `evidencias`: metadados e chave do objeto armazenado no MinIO, vinculados à execução.
-
-As chaves estrangeiras compostas reforçam a consistência de propriedade entre os registros. A aplicação ainda precisa aplicar filtros de proprietário em todas as APIs; constraints não substituem autorização.
-
-### Aplicação da migração
-1. Fazer backup do banco utilizado pelo ambiente.
-2. Confirmar que `usuarios.id` é compatível (`INT`) e que `usuarios` usa InnoDB.
-3. Executar `database/migration-v8-testflow.sql` uma única vez no banco correto.
-4. Conferir a criação das quatro tabelas.
-5. Não executar em produção sem backup e sem confirmar o banco/stack de destino.
-
-O arquivo `database/seed-testflow.sql` é um guia de seed opcional. Ele não cria contas fictícias nem insere dados automaticamente.
-
-## 7. Execução local
-
-Requisitos: Node.js 22+, npm e Docker Desktop (para a stack completa).
+Na raiz do repositório:
 
 ```bash
 cp .env.example .env
 ```
 
-Preencha `.env` com credenciais locais fortes. Não reutilize credenciais de produção.
+Preencha as credenciais locais. Não publique nem envie o arquivo `.env`.
+
+Para um Codespace de desenvolvimento, gere segredos fortes para `DB_PASSWORD`, `DB_ROOT_PASSWORD`, `JWT_SECRET`, `SESSION_SECRET`, `INTERNAL_SERVICE_SECRET` e `MINIO_SECRET_KEY`. Use valores diferentes entre si.
+
+Defina também:
+
+```env
+DB_HOST=db
+DB_NAME=testflow_ai
+DB_USER=testflow
+EMAIL_VERIFICATION_REQUIRED=false
+GEMINI_API_KEY=sua_chave_configurada_localmente
+GEMINI_MODEL=gemini-3.8-flash
+```
+
+`EMAIL_VERIFICATION_REQUIRED=false` é somente uma conveniência para desenvolvimento local sem SMTP. Em produção, mantenha `true` e configure um serviço de e-mail válido.
+
+A chave Gemini é usada exclusivamente pelo backend. Nunca a coloque no React, em `VITE_*`, em commits, prints ou mensagens.
+
+### 2. Instalar dependências e compilar o frontend
 
 ```bash
 npm ci
 npm --prefix frontend ci
 npm --prefix frontend run build
-npm start
+npm test
 ```
 
-A aplicação web utiliza a porta `3000`. Verificação de saúde:
+### 3. Subir os serviços de infraestrutura
 
 ```bash
-curl http://localhost:3000/health
+docker compose up -d db redis minio auth-service log-service
+docker compose ps
 ```
 
-O endpoint `/api/status` informa explicitamente que as APIs de domínio ainda estão pendentes.
+Aguarde MariaDB e os serviços ficarem saudáveis.
 
-Para subir a stack Docker local, revise primeiro as variáveis e os volumes em `docker-compose.yml`. Não execute `docker compose down -v` em ambientes que contenham dados importantes.
+### 4. Aplicar a migração de domínio
 
-## 8. Configuração de implantação
+A migração `database/migration-v8-testflow.sql` cria as tabelas `projetos`, `casos_teste`, `execucoes` e `evidencias`. Ela deve ser aplicada uma única vez no banco correto, após o banco inicial ter criado a tabela `usuarios`.
 
-- O arquivo `docker-compose.portainer.yml` mantém a porta externa previamente utilizada (`8211:3000`) e a rede existente.
-- As imagens foram renomeadas para `joicesoato/testflow-ai`, `joicesoato/testflow-ai-auth` e `joicesoato/testflow-ai-log`.
-- Antes do deploy, criar/verificar os três repositórios no Docker Hub e conferir se as imagens publicadas são públicas ou se o Portainer possui credenciais para acessá-las.
-- Configurar as variáveis do Portainer usando os valores já existentes e válidos no ambiente.
-- Não alterar domínio, porta, volumes ou credenciais sem validar com o responsável pela infraestrutura.
-- O deploy deve ocorrer somente depois da revisão do workflow, migração, variáveis e backup.
+```bash
+docker compose exec -T db sh -c 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"' < database/migration-v8-testflow.sql
+```
 
-## 9. Segurança
+Confira as tabelas antes de prosseguir. Não execute `docker compose down -v` para tentar corrigir problemas: isso remove volumes e pode apagar dados.
 
-Consulte [SECURITY.md](SECURITY.md) para o checklist de segurança e limites conhecidos desta versão. O resultado das verificações realizadas e pendentes está em [VALIDACAO.md](VALIDACAO.md).
+### 5. Subir a aplicação
 
-Regras essenciais:
-- Nunca versionar `.env`, tokens, senhas, chaves JWT, credenciais MinIO ou segredos Stripe.
-- Utilizar HTTPS no ambiente publicado.
-- Gerar segredos longos, aleatórios e diferentes por ambiente.
-- Validar e autorizar toda operação no backend.
-- Aplicar isolamento por `usuario_id` em consultas, alterações e exclusões.
-- Validar método, URL, tamanho e conteúdo dos arquivos antes de executar requisições ou fazer upload.
-- Proteger execução HTTP contra SSRF, redirecionamentos maliciosos, acesso a metadados e redes privadas.
-- Registrar eventos sem incluir senhas, tokens, cookies ou conteúdo sensível.
-- Fazer backup antes de qualquer migração.
+```bash
+docker compose up -d --build app
+docker compose ps
+```
 
-## 10. CI/CD
+A aplicação local fica disponível na porta `3000`. No Codespaces, abra a porta encaminhada pelo painel Ports.
 
-O workflow em `.github/workflows/ci-cd.yml` prevê build/testes, publicação das imagens e webhook opcional do Portainer. Para funcionar, configure no GitHub Actions os secrets necessários, especialmente `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN` e, se utilizado, `PORTAINER_WEBHOOK`.
+## Fluxo principal
 
-O workflow precisa ser validado em execução real no GitHub Actions. A existência do YAML não comprova que o deploy foi realizado.
+1. Crie uma conta e entre na plataforma.
+2. Crie um projeto e informe a URL base pública da API.
+3. Abra os detalhes do projeto.
+4. Use **Gerar casos com IA** para gerar cenários com Gemini ou cadastre um caso manualmente.
+5. Clique em **Executar** para realizar a chamada HTTP.
+6. Confira o status recebido, o tempo de resposta e o conteúdo retornado.
 
-## 11. Critérios de aceite antes de considerar o SaaS funcional
+Para uma primeira validação, pode ser usada uma API pública de testes, como `https://jsonplaceholder.typicode.com`. Exemplo de caso: método `GET`, endpoint `/posts/1`, status esperado `200`.
 
-- [ ] Build de frontend e containers aprovado.
-- [ ] Migração aplicada com backup e conferência do schema.
-- [ ] Cadastro, login e recuperação de senha testados.
-- [ ] CRUD de projetos e casos testado.
-- [ ] Execução de API com timeout, limites e proteção SSRF testada.
-- [ ] 3 papéis testados com respostas `403` nas ações proibidas.
-- [ ] Isolamento entre dois usuários testado em leitura, edição e exclusão.
-- [ ] Eventos de auditoria com autor e data/hora conferidos.
-- [ ] Upload e recuperação de evidências no MinIO testados.
-- [ ] Landing pública acessível sem login.
-- [ ] Stack Portainer saudável e URL pública validada.
-- [ ] Prints de evidência e issue de entrega publicados.
+## API de domínio
 
-## 12. Licença e uso acadêmico
+Todas as rotas abaixo exigem token Bearer válido.
 
-Projeto acadêmico desenvolvido para a disciplina ISW055 — FATEC, semestre 2026.2.
+| Método | Rota | Finalidade |
+|---|---|---|
+| GET | `/api/projetos/:projetoId/casos` | Listar casos do projeto |
+| POST | `/api/projetos/:projetoId/casos` | Criar caso manual |
+| POST | `/api/projetos/:projetoId/casos/gerar-ia` | Gerar e salvar casos com Gemini |
+| DELETE | `/api/projetos/:projetoId/casos/:casoId` | Excluir caso |
+| POST | `/api/projetos/:projetoId/casos/:casoId/executar` | Executar caso |
+| GET | `/api/projetos/:projetoId/execucoes` | Consultar histórico recente |
+
+Exemplo de corpo para criar um caso:
+
+```json
+{
+  "titulo": "Consultar post por ID",
+  "metodo": "GET",
+  "endpoint": "/posts/1",
+  "headers": {},
+  "corpo": null,
+  "status_esperado": 200
+}
+```
+
+Para gerar casos com IA:
+
+```json
+{
+  "objetivo": "API de posts com consulta e listagem"
+}
+```
+
+## Segurança da execução HTTP
+
+A execução acontece no servidor, nunca diretamente no navegador. O executor:
+
+- Aceita somente caminhos relativos no endpoint do caso.
+- Mantém a chamada no mesmo domínio da URL base do projeto.
+- Rejeita endereços locais, privados e de metadados após resolução DNS.
+- Não segue redirecionamentos.
+- Aplica timeout de 10 segundos.
+- Limita a resposta armazenada.
+- Não executa código arbitrário enviado pelo caso.
+
+Por isso, endpoints `localhost`, IPs privados e serviços internos do Docker não podem ser usados como alvo de teste. Utilize uma API pública ou um ambiente de homologação com endereço público.
+
+## Verificações
+
+```bash
+npm test
+curl http://localhost:3000/health
+curl http://localhost:3000/api/status
+```
+
+`npm test` verifica a sintaxe dos serviços Node.js. Isso não substitui os testes de integração com banco, autenticação, Gemini e uma API-alvo real.
+
+## Segurança e publicação
+
+- Não versionar `.env`, chaves Gemini, tokens, senhas ou credenciais.
+- Configurar HTTPS e segredos exclusivos no ambiente publicado.
+- Manter `EMAIL_VERIFICATION_REQUIRED=true` em produção.
+- Aplicar a migração somente após backup e confirmação do banco.
+- Configurar `GEMINI_API_KEY` como variável secreta no ambiente de execução.
+- Conferir permissões e isolamento entre usuários antes da publicação.
+- Revisar `SECURITY.md`, `VALIDACAO.md` e `docker-compose.portainer.yml` antes do deploy.
+
+## Contexto acadêmico
+
+Desenvolvido para a disciplina ISW055 — FATEC Pompeia, semestre 2026.2.

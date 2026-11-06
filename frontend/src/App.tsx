@@ -96,8 +96,8 @@ function Shell({
           <Brand />
           <nav>
             <Link to="/projects">Projetos</Link>
-            <a href="/#produto">Produto</a>
-            <a href="/#seguranca">Segurança</a>
+            <Link to="/produto">Produto</Link>
+            <Link to="/seguranca">Segurança</Link>
           </nav>
           {user ? (
             <button className="nav-cta" onClick={onLogout}>
@@ -333,6 +333,168 @@ function Landing() {
         </section>
       </main>
     </>
+  );
+}
+
+
+function ProdutoPage() {
+  return (
+    <main>
+      <section className="section">
+        <span className="section-kicker">PRODUTO TESTFLOW AI</span>
+        <h2>
+          Qualidade de software
+          <br />
+          <em>em um único fluxo.</em>
+        </h2>
+        <p className="section-intro">
+          Organize projetos, documente cenários de teste e acompanhe
+          as etapas de validação das suas APIs REST em um só lugar.
+        </p>
+
+        <div className="feature-grid">
+          <div className="feature">
+            <span>01 / PROJETOS</span>
+            <h3>Organização centralizada</h3>
+            <p>Cadastre projetos, endereços de API e ambientes de trabalho.</p>
+          </div>
+          <div className="feature">
+            <span>02 / CENÁRIOS</span>
+            <h3>Casos de teste</h3>
+            <p>Estruture requisições e resultados esperados para cada API.</p>
+          </div>
+          <div className="feature">
+            <span>03 / EXECUÇÕES</span>
+            <h3>Acompanhamento</h3>
+            <p>Organize execuções e acompanhe os resultados dos testes.</p>
+          </div>
+          <div className="feature">
+            <span>04 / EVIDÊNCIAS</span>
+            <h3>Rastreabilidade</h3>
+            <p>Mantenha registros associados às execuções dos testes.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="workflow">
+        <div>
+          <span className="section-kicker">COMO FUNCIONA</span>
+          <h2>Do projeto à evidência, em um fluxo.</h2>
+          <p>
+            O TestFlow AI organiza as etapas necessárias para estruturar
+            e acompanhar testes de software.
+          </p>
+        </div>
+        <ol>
+          <li>
+            <b>Cadastre seu projeto</b>
+            <span>Defina a API e o ambiente que deseja testar.</span>
+          </li>
+          <li>
+            <b>Organize os casos de teste</b>
+            <span>Descreva cenários, parâmetros e resultados esperados.</span>
+          </li>
+          <li>
+            <b>Execute os testes</b>
+            <span>Acompanhe os resultados das requisições.</span>
+          </li>
+          <li>
+            <b>Registre evidências</b>
+            <span>Centralize informações para análise e rastreabilidade.</span>
+          </li>
+        </ol>
+      </section>
+
+      <section className="closing">
+        <div>
+          <span className="section-kicker">COMECE A ORGANIZAR</span>
+          <h2>Mais clareza em cada teste.</h2>
+          <p>Crie sua conta e comece a estruturar seus projetos de testes de API.</p>
+        </div>
+        <Link className="primary" to="/register">
+          Criar minha conta <span>→</span>
+        </Link>
+      </section>
+    </main>
+  );
+}
+
+function SegurancaPage() {
+  return (
+    <main>
+      <section className="security">
+        <span className="section-kicker">SEGURANÇA E CONTROLE</span>
+        <h2>
+          Seus projetos com
+          <br />
+          <em>acesso organizado.</em>
+        </h2>
+        <p className="section-intro">
+          A plataforma utiliza mecanismos de autenticação, controle de
+          permissões e registros de atividades para organizar o acesso
+          aos recursos.
+        </p>
+
+        <div className="security-grid">
+          <div>
+            <b>Autenticação</b>
+            <p>Acesso protegido por conta e sessão autenticada.</p>
+          </div>
+          <div>
+            <b>Permissões</b>
+            <p>Operações controladas conforme o perfil de acesso.</p>
+          </div>
+          <div>
+            <b>Isolamento</b>
+            <p>Projetos vinculados aos respectivos usuários.</p>
+          </div>
+          <div>
+            <b>Auditoria</b>
+            <p>Registro de ações importantes realizadas na plataforma.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="workflow">
+        <div>
+          <span className="section-kicker">CONTROLE DE ACESSO</span>
+          <h2>Organização em cada operação.</h2>
+          <p>
+            Os recursos da plataforma consideram a identidade do usuário
+            autenticado e as permissões associadas ao seu perfil.
+          </p>
+        </div>
+        <ol>
+          <li>
+            <b>Identificação</b>
+            <span>O usuário acessa a plataforma com sua conta.</span>
+          </li>
+          <li>
+            <b>Autorização</b>
+            <span>As operações verificam as permissões necessárias.</span>
+          </li>
+          <li>
+            <b>Isolamento</b>
+            <span>As consultas de projetos consideram o usuário autenticado.</span>
+          </li>
+          <li>
+            <b>Rastreabilidade</b>
+            <span>Ações importantes podem ser registradas para auditoria.</span>
+          </li>
+        </ol>
+      </section>
+
+      <section className="closing">
+        <div>
+          <span className="section-kicker">TESTFLOW AI</span>
+          <h2>Qualidade com organização.</h2>
+          <p>Conheça a plataforma e organize seus projetos de testes de API.</p>
+        </div>
+        <Link className="primary" to="/register">
+          Criar minha conta <span>→</span>
+        </Link>
+      </section>
+    </main>
   );
 }
 
@@ -622,6 +784,215 @@ function ProjectForm({
   );
 }
 
+
+type TestCase = {
+  id: number;
+  titulo: string;
+  descricao: string;
+  metodo: string;
+  endpoint: string;
+  status_esperado: number;
+  ultimo_status?: string | null;
+};
+
+function CasesPanel({ token, project, canManage }: { token: string; project: Project; canManage: boolean }) {
+  const [cases, setCases] = useState<TestCase[]>([]);
+  const [title, setTitle] = useState("");
+  const [endpoint, setEndpoint] = useState("/");
+  const [method, setMethod] = useState("GET");
+  const [expected, setExpected] = useState("200");
+  const [objective, setObjective] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [lastResult, setLastResult] = useState<any>(null);
+
+  async function loadCases() {
+    const data = await apiRequest(`/api/projetos/${project.id}/casos`, token);
+    setCases(data.casos || []);
+  }
+
+  useEffect(() => {
+    loadCases().catch(err => setError(err.message));
+  }, [project.id, token]);
+
+  async function createCase(event: FormEvent) {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    setMessage("");
+    try {
+      await apiRequest(`/api/projetos/${project.id}/casos`, token, {
+        method: "POST",
+        body: JSON.stringify({
+          titulo: title,
+          metodo: method,
+          endpoint,
+          status_esperado: Number(expected),
+          descricao: "Caso cadastrado manualmente."
+        })
+      });
+      setTitle("");
+      setEndpoint("/");
+      setMessage("Caso de teste cadastrado.");
+      await loadCases();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível salvar.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function generateWithAI() {
+    setAiLoading(true);
+    setError("");
+    setMessage("");
+    setLastResult(null);
+    try {
+      const data = await apiRequest(`/api/projetos/${project.id}/casos/gerar-ia`, token, {
+        method: "POST",
+        body: JSON.stringify({ objetivo: objective })
+      });
+      setMessage(data.mensagem || "Casos gerados com IA.");
+      await loadCases();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Falha ao gerar com IA.");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  async function executeCase(id: number) {
+    setLoading(true);
+    setError("");
+    setMessage("");
+    try {
+      const data = await apiRequest(`/api/projetos/${project.id}/casos/${id}/executar`, token, {
+        method: "POST"
+      });
+      setLastResult(data.execucao);
+      setMessage(data.mensagem);
+      await loadCases();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Falha na execução.");
+      await loadCases().catch(() => undefined);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function deleteCase(id: number) {
+    if (!window.confirm("Excluir este caso de teste e seu histórico?")) return;
+    setError("");
+    try {
+      await apiRequest(`/api/projetos/${project.id}/casos/${id}`, token, { method: "DELETE" });
+      setMessage("Caso excluído.");
+      await loadCases();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível excluir.");
+    }
+  }
+
+  return (
+    <section className="case-detail">
+      <div className="list-heading">
+        <div>
+          <h2>Casos de teste</h2>
+          <p>Crie cenários, gere sugestões com IA e execute requisições reais.</p>
+        </div>
+        <span className="case-count">{cases.length} casos</span>
+      </div>
+
+      {error && <div className="form-error">{error}</div>}
+      {message && <div className="form-success">{message}</div>}
+
+      {canManage && <div className="case-ai-panel">
+        <div>
+          <span className="eyebrow">TESTFLOW AI</span>
+          <h3>Gerar casos com Gemini</h3>
+          <p>A IA analisa o contexto e cria cenários que são salvos neste projeto.</p>
+        </div>
+        <label>
+          O que a API faz? (opcional)
+          <textarea
+            value={objective}
+            onChange={event => setObjective(event.target.value)}
+            placeholder="Ex.: API de usuários com listagem, cadastro e consulta por ID."
+            rows={2}
+          />
+        </label>
+        <button className="primary" type="button" onClick={generateWithAI} disabled={aiLoading || !project.baseUrl}>
+          {aiLoading ? "Gerando com Gemini..." : "✦ Gerar casos com IA"}
+        </button>
+        {!project.baseUrl && <small>Cadastre a URL base da API para habilitar a geração.</small>}
+      </div>}
+
+      {canManage && <div className="case-create-panel">
+        <h3>Novo caso manual</h3>
+        <form className="case-form" onSubmit={createCase}>
+          <label>
+            Título
+            <input value={title} onChange={event => setTitle(event.target.value)} required maxLength={160} placeholder="Ex.: Listar usuários" />
+          </label>
+          <div className="case-fields">
+            <label>
+              Método
+              <select value={method} onChange={event => setMethod(event.target.value)}>
+                {["GET", "POST", "PUT", "PATCH", "DELETE"].map(value => <option key={value}>{value}</option>)}
+              </select>
+            </label>
+            <label>
+              Endpoint
+              <input value={endpoint} onChange={event => setEndpoint(event.target.value)} required placeholder="/users" />
+            </label>
+            <label>
+              Status esperado
+              <input type="number" min="100" max="599" value={expected} onChange={event => setExpected(event.target.value)} required />
+            </label>
+          </div>
+          <button className="secondary" type="submit" disabled={loading || !title.trim()}>
+            {loading ? "Salvando..." : "Adicionar caso"}
+          </button>
+        </form>
+      </div>}
+
+      <div className="case-list">
+        {cases.length === 0 ? (
+          <div className="pending-panel"><b>Nenhum caso cadastrado</b><span>Crie um caso manualmente ou use a geração com Gemini.</span></div>
+        ) : cases.map(item => (
+          <article className="case-item" key={item.id}>
+            <div className="case-item-main">
+              <span className="method-tag">{item.metodo}</span>
+              <div>
+                <b>{item.titulo}</b>
+                <small>{item.endpoint} · Esperado HTTP {item.status_esperado}</small>
+              </div>
+            </div>
+            <div className="case-item-actions">
+              {item.ultimo_status && <span className={`status-tag ${item.ultimo_status}`}>{item.ultimo_status}</span>}
+              <button className="primary small-button" type="button" disabled={loading} onClick={() => executeCase(item.id)}>Executar</button>
+              {canManage && <button className="text-button" type="button" onClick={() => deleteCase(item.id)}>Excluir</button>}
+            </div>
+          </article>
+        ))}
+      </div>
+
+      {lastResult && (
+        <div className="execution-result">
+          <div className="list-heading">
+            <h3>Resultado da última execução</h3>
+            <span className={`status-tag ${lastResult.status}`}>{lastResult.status}</span>
+          </div>
+          <p>HTTP {lastResult.status_http} · {lastResult.duracao_ms} ms · Esperado {lastResult.status_esperado}</p>
+          {lastResult.erro && <div className="form-error">{lastResult.erro}</div>}
+          <pre>{lastResult.resposta || "A API não retornou conteúdo."}</pre>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function ProjectDetails({
   token,
   canManage,
@@ -730,18 +1101,7 @@ function ProjectDetails({
         </div>
       </section>
 
-      <section className="case-detail">
-        <div className="list-heading">
-          <h2>Casos de teste</h2>
-        </div>
-        <div className="pending-panel">
-          <b>Integração em andamento</b>
-          <span>
-            O gerenciamento de casos de teste será habilitado quando as
-            respectivas rotas da API forem implementadas.
-          </span>
-        </div>
-      </section>
+      <CasesPanel token={token} project={project} canManage={canManage} />
     </main>
   );
 }
@@ -860,6 +1220,8 @@ export default function App() {
     <Shell user={user} onLogout={logout}>
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/produto" element={<ProdutoPage />} />
+        <Route path="/seguranca" element={<SegurancaPage />} />
 
         <Route
           path="/login"

@@ -132,22 +132,23 @@ app.post("/register", sensitiveLimiter, async (req, res) => {
     const senhaHash = await bcrypt.hash(senha, 12);
     const nomeHtml = escapeHtml(nome);
 
-    const tokenVerificacao = crypto.randomBytes(32).toString("hex");
+    const exigirVerificacao = process.env.EMAIL_VERIFICATION_REQUIRED !== "false";
+    const tokenVerificacao = exigirVerificacao ? crypto.randomBytes(32).toString("hex") : null;
 
     const [resultado] = await pool.execute(
       `INSERT INTO usuarios
        (nome, email, senha_hash, role, email_verificado, token_verificacao, verificacao_expira_em)
-       VALUES (?, ?, ?, 'analista', FALSE, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE))`,
-      [nome, email, senhaHash, tokenVerificacao]
+       VALUES (?, ?, ?, 'analista', ?, ?, ${exigirVerificacao ? "DATE_ADD(NOW(), INTERVAL 30 MINUTE)" : "NULL"})`,
+      [nome, email, senhaHash, exigirVerificacao ? false : true, tokenVerificacao]
     );
 
-    const appUrl = process.env.APP_URL || "http://localhost:3000";
+    if (exigirVerificacao) {
+      const appUrl = process.env.APP_URL || "http://localhost:3000";
+      const linkVerificacao =
+        `${appUrl}/api/auth/verify-email?token=${tokenVerificacao}`;
 
-    const linkVerificacao =
-      `${appUrl}/api/auth/verify-email?token=${tokenVerificacao}`;
-
-    try {
-      await transporter.sendMail({
+      try {
+        await transporter.sendMail({
         from: process.env.MAIL_FROM,
         to: email,
         subject: "Confirme seu cadastro - TestFlow AI",
@@ -186,24 +187,18 @@ app.post("/register", sensitiveLimiter, async (req, res) => {
             Se você não realizou este cadastro, ignore este e-mail.
           </p>
         `
-      });
-    } catch (erroEmail) {
-      console.error("Erro ao enviar confirmação:", erroEmail);
-
-      // Remove o usuário se o e-mail não puder ser enviado
-      await pool.execute(
-        "DELETE FROM usuarios WHERE id = ?",
-        [resultado.insertId]
-      );
-
-      return res.status(500).json({
-        erro: "Não foi possível enviar o e-mail de confirmação."
-      });
+        });
+      } catch (erroEmail) {
+        console.error("Erro ao enviar confirmação:", erroEmail);
+        await pool.execute("DELETE FROM usuarios WHERE id = ?", [resultado.insertId]);
+        return res.status(500).json({ erro: "Não foi possível enviar o e-mail de confirmação." });
+      }
     }
 
     res.status(201).json({
-      mensagem:
-        "Cadastro realizado! Enviamos um e-mail de confirmação. Clique no link recebido para ativar sua conta.",
+      mensagem: exigirVerificacao
+        ? "Cadastro realizado! Enviamos um e-mail de confirmação. Clique no link recebido para ativar sua conta."
+        : "Cadastro realizado. A conta está ativa neste ambiente de desenvolvimento.",
       usuario: {
         id: resultado.insertId,
         nome,
