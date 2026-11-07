@@ -98,3 +98,20 @@
   .case-item { align-items: flex-start; flex-direction: column; }
   .case-item-actions { flex-wrap: wrap; }
 }
+
+
+/* Navegação responsiva e acessibilidade */
+@media(max-width:600px) {
+  .topbar {height:auto;min-height:70px;padding:12px 5%;display:flex;flex-wrap:wrap;gap:10px}
+  .topbar nav {
+    display:flex;order:3;flex:1 0 100%;justify-content:space-between;
+    gap:12px;padding:8px 0 2px;border-top:1px solid #1d2a3d;font-size:11px
+  }
+  .topbar nav a {padding:6px 0}
+  .nav-cta {margin-left:auto}
+  .project-toolbar {align-items:stretch;flex-direction:column}
+  .project-total {padding:0}
+}
+@media(prefers-reduced-motion:reduce) {
+  *,*::before,*::after {scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}

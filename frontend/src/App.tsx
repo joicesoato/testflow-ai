@@ -643,46 +643,84 @@ function Projects({
   error: string;
   canManage: boolean;
 }) {
+  const [search, setSearch] = useState("");
+  const [environment, setEnvironment] = useState("todos");
+
+  const filtered = projects.filter(project => {
+    const term = search.trim().toLocaleLowerCase("pt-BR");
+    const matches = !term || [project.name, project.description, project.baseUrl]
+      .some(value => value.toLocaleLowerCase("pt-BR").includes(term));
+    return matches && (environment === "todos" || project.environment === environment);
+  });
+
   return (
-    <main className="workspace">
+    <main className="workspace projects-workspace">
       <div className="page-heading">
         <div>
           <span className="eyebrow">ÁREA DE TRABALHO</span>
           <h1>Meus projetos</h1>
-          <p>Organize os projetos e acompanhe seus testes de API.</p>
+          <p>Organize seus ambientes, acompanhe cenários e execute testes de API.</p>
         </div>
-        {canManage && (
-          <Link className="primary" to="/projects/new">Novo projeto</Link>
-        )}
+        {canManage && <Link className="primary" to="/projects/new">+ Novo projeto</Link>}
       </div>
 
       {error && <div className="form-error">{error}</div>}
+
+      {!loading && projects.length > 0 && (
+        <div className="project-toolbar">
+          <label>
+            Buscar projetos
+            <input value={search} onChange={event => setSearch(event.target.value)}
+              placeholder="Nome, descrição ou URL da API..." />
+          </label>
+          <label>
+            Ambiente
+            <select value={environment} onChange={event => setEnvironment(event.target.value)}>
+              <option value="todos">Todos os ambientes</option>
+              <option value="desenvolvimento">Desenvolvimento</option>
+              <option value="homologacao">Homologação</option>
+              <option value="producao">Produção</option>
+            </select>
+          </label>
+          <span className="project-total">{filtered.length} de {projects.length} projetos</span>
+        </div>
+      )}
 
       {loading ? (
         <div className="empty-state">Carregando projetos...</div>
       ) : projects.length === 0 ? (
         <div className="empty-state">
           <h2>Nenhum projeto cadastrado</h2>
-          <p>Crie seu primeiro projeto para começar.</p>
-          {canManage && (
-            <Link className="primary" to="/projects/new">Criar projeto</Link>
-          )}
+          <p>Crie seu primeiro projeto para organizar os casos e as execuções da sua API.</p>
+          {canManage && <Link className="primary" to="/projects/new">Criar primeiro projeto</Link>}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="empty-state">
+          <h2>Nenhum resultado encontrado</h2>
+          <p>Altere a busca ou selecione outro ambiente.</p>
+          <button className="secondary" type="button"
+            onClick={() => { setSearch(""); setEnvironment("todos"); }}>
+            Limpar filtros
+          </button>
         </div>
       ) : (
         <div className="project-grid">
-          {projects.map(project => (
+          {filtered.map(project => (
             <article className="project-card" key={project.id}>
-              <div className="project-icon">API</div>
-              <h2>{project.name}</h2>
-              <p>{project.description || "Sem descrição."}</p>
-              <div className="project-meta">
-                <span>{project.environment}</span>
+              <div className="project-card-top">
+                <div className="project-icon">API</div>
+                <span className={`environment-tag environment-${project.environment}`}>
+                  {project.environment === "homologacao" ? "Homologação" :
+                    project.environment === "producao" ? "Produção" : "Desenvolvimento"}
+                </span>
               </div>
-              {project.baseUrl && (
-                <div className="project-url">{project.baseUrl}</div>
-              )}
+              <h2>{project.name}</h2>
+              <p>{project.description || "Sem descrição cadastrada."}</p>
+              <div className={`project-url ${project.baseUrl ? "" : "project-url-empty"}`}>
+                {project.baseUrl || "URL base ainda não configurada"}
+              </div>
               <Link className="card-link" to={`/projects/${project.id}`}>
-                Acessar projeto →
+                Abrir projeto <span>→</span>
               </Link>
             </article>
           ))}
@@ -757,6 +795,9 @@ function ProjectForm({
             onChange={event => setBaseUrl(event.target.value)}
             placeholder="https://api.exemplo.com"
           />
+          <small className="field-help">
+            Nesta versão, a execução precisa alcançar a API por um endereço público. APIs internas, localhost e intranets não são acessadas pela nuvem. A execução privada exigirá um agente instalado na rede autorizada.
+          </small>
         </label>
 
         <label>
