@@ -1057,7 +1057,7 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
             <h3>Resultado da última execução</h3>
             <span className={`status-tag ${lastResult.status}`}>{lastResult.status}</span>
           </div>
-          <p>HTTP {lastResult.status_http} · {lastResult.duracao_ms} ms · Esperado {lastResult.status_esperado}</p>
+          <p>{lastResult.modo_execucao === "simulacao" ? "SIMULAÇÃO LOCAL · " + (lastResult.resumo?.passed || 0) + " de " + (lastResult.resumo?.total || 0) + " verificações aprovadas · " + lastResult.duracao_ms + " ms" : "HTTP " + lastResult.status_http + " · " + lastResult.duracao_ms + " ms · Esperado " + lastResult.status_esperado}</p>
           {lastResult.erro && <div className="form-error">{lastResult.erro}</div>}
           <pre>{lastResult.resposta || "A API não retornou conteúdo."}</pre>
         </div>
