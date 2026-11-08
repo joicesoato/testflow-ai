@@ -115,3 +115,13 @@
 @media(prefers-reduced-motion:reduce) {
   *,*::before,*::after {scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
+
+/* Fluxos novos: simulação e cobrança */
+.case-create-panel .panel-form { display:grid; gap:14px; margin-top:16px; }
+.case-create-panel .panel-form label { display:grid; gap:7px; color:var(--muted,#b4bfcc); font-size:.88rem; }
+.case-create-panel .panel-form input,.case-create-panel .panel-form textarea { width:100%; color:#e8edf7; background:#0b1524; border:1px solid #35465e; border-radius:9px; padding:11px 12px; font:inherit; font-size:12px; }
+.case-create-panel .panel-form textarea { resize:vertical; min-height:100px; line-height:1.6; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; }
+.case-create-panel .panel-form input:focus,.case-create-panel .panel-form textarea:focus { outline:2px solid #c5f36a55; border-color:var(--accent); }
+.case-create-panel > p,.case-create-panel small { display:block; color:var(--muted,#9aa8b8); font-size:12px; line-height:1.65; margin:8px 0; }
+.case-item-main { min-width:0; } .case-item-main > div { min-width:0; } .case-item-main small { overflow-wrap:anywhere; }
+@media(max-width:700px) { .case-create-panel { padding:17px; } .case-create-panel .panel-form button { width:100%; } }
