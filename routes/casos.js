@@ -167,7 +167,7 @@ router.get("/:projetoId/casos", exigir("cases:read"), async (req, res) => {
     if (!projeto) return res.status(404).json({ erro: "Projeto não encontrado." });
     const [casos] = await pool.execute(
       `SELECT c.id, c.titulo, c.descricao, c.metodo, c.endpoint, c.headers, c.corpo,
-              c.status_esperado, c.ativo, c.criado_em,
+              c.status_esperado, c.ativo, c.modo_execucao, c.criado_em,
               (SELECT e.status FROM execucoes e WHERE e.caso_teste_id = c.id
                AND e.projeto_id = c.projeto_id AND e.usuario_id = c.usuario_id
                ORDER BY e.executado_em DESC LIMIT 1) AS ultimo_status
