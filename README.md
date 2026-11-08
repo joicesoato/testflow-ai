@@ -12,12 +12,13 @@ Projeto acadêmico da disciplina **ISW055 — Introdução à Computação em Nu
 - Cadastro e exclusão de casos de teste.
 - Geração de cenários com Gemini API e gravação dos casos no MariaDB.
 - Execução real de requisições HTTP a partir do backend.
-- Comparação entre status HTTP recebido e esperado.
+- Cenários de simulação sem URL, com dados JSON e verificações determinísticas executadas localmente, sem chamadas de rede.
+- Comparação entre status HTTP recebido e esperado nos cenários HTTP.
 - Histórico de execuções persistido no MariaDB.
 - Registro de eventos no serviço de auditoria.
 - Limite de tempo e tamanho de resposta, bloqueio de destinos locais/privados e de redirecionamentos durante a execução.
 
-**Limites desta entrega:** a IA gera casos de teste a partir do contexto informado e da URL base cadastrada. Ela não descobre automaticamente toda a documentação da API. A validação automática atual compara o status HTTP; não executa scripts arbitrários nem valida automaticamente todos os campos do JSON. Upload de evidências e cobrança Stripe não fazem parte deste MVP. A stack ainda precisa ser validada no Codespace/Portainer de destino.
+**Limites desta entrega:** a IA gera casos de teste a partir do contexto informado e da URL base cadastrada. Ela não descobre automaticamente toda a documentação da API. Nos testes HTTP, a validação automática compara o status recebido; a simulação sem URL avalia apenas as verificações declaradas sobre os dados fornecidos e não representa uma chamada real. O checkout e o portal Stripe dependem de chaves, preço recorrente e webhook configurados no ambiente. Upload de arquivos de evidência ainda não está implementado. A stack ainda precisa ser validada no Codespace/Portainer de destino.
 
 ## Tecnologias
 
@@ -51,7 +52,7 @@ DB_NAME=testflow_ai
 DB_USER=testflow
 EMAIL_VERIFICATION_REQUIRED=false
 GEMINI_API_KEY=sua_chave_configurada_localmente
-GEMINI_MODEL=gemini-3.8-flash
+GEMINI_MODEL=gemini-3.5-flash-lite
 ```
 
 `EMAIL_VERIFICATION_REQUIRED=false` é somente uma conveniência para desenvolvimento local sem SMTP. Em produção, mantenha `true` e configure um serviço de e-mail válido.
@@ -78,10 +79,11 @@ Aguarde MariaDB e os serviços ficarem saudáveis.
 
 ### 4. Aplicar a migração de domínio
 
-A migração `database/migration-v8-testflow.sql` cria as tabelas `projetos`, `casos_teste`, `execucoes` e `evidencias`. Ela deve ser aplicada uma única vez no banco correto, após o banco inicial ter criado a tabela `usuarios`.
+As migrações `database/migration-v8-testflow.sql` e `database/migration-v9-saas.sql` criam/atualizam o domínio, incluindo projetos, casos, execuções, evidências, modo de simulação e controle de assinaturas. A v8 deve ser aplicada primeiro; a v9 deve ser aplicada depois, no banco correto, após backup.
 
 ```bash
 docker compose exec -T db sh -c 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"' < database/migration-v8-testflow.sql
+docker compose exec -T db sh -c 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"' < database/migration-v9-saas.sql
 ```
 
 Confira as tabelas antes de prosseguir. Não execute `docker compose down -v` para tentar corrigir problemas: isso remove volumes e pode apagar dados.
@@ -104,6 +106,10 @@ A aplicação local fica disponível na porta `3000`. No Codespaces, abra a port
 5. Clique em **Executar** para realizar a chamada HTTP.
 6. Confira o status recebido, o tempo de resposta e o conteúdo retornado.
 
+Para criar um teste sem URL, use o painel **Simulação sem URL** nos detalhes do projeto. Informe os dados JSON e as verificações desejadas. Os operadores disponíveis são `equals`, `not_equals`, `exists`, `not_exists`, `contains`, `greater_than`, `less_than`, `is_true`, `is_false` e `is_type`. Ao executar, a plataforma avalia os dados localmente e identifica explicitamente o resultado como simulação; nenhuma requisição HTTP é enviada.
+
+A página **Assinatura** apresenta o estado do plano, permite iniciar o Checkout e abrir o portal de cobrança. Configure `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID` e `APP_URL` no servidor. No Dashboard Stripe, cadastre o endpoint `/api/billing/webhook` do seu domínio e habilite `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted` e `customer.deleted`. Use somente chaves de teste durante a validação.
+
 Para uma primeira validação, pode ser usada uma API pública de testes, como `https://jsonplaceholder.typicode.com`. Exemplo de caso: método `GET`, endpoint `/posts/1`, status esperado `200`.
 
 ## API de domínio
@@ -116,7 +122,13 @@ Todas as rotas abaixo exigem token Bearer válido.
 | POST | `/api/projetos/:projetoId/casos` | Criar caso manual |
 | POST | `/api/projetos/:projetoId/casos/gerar-ia` | Gerar e salvar casos com Gemini |
 | DELETE | `/api/projetos/:projetoId/casos/:casoId` | Excluir caso |
-| POST | `/api/projetos/:projetoId/casos/:casoId/executar` | Executar caso |
+| POST | `/api/projetos/:projetoId/casos/:casoId/executar` | Executar caso HTTP |
+| POST | `/api/projetos/:projetoId/casos-simulacao` | Criar cenário sem URL |
+| POST | `/api/projetos/:projetoId/casos/:casoId/executar-simulacao` | Executar simulação local |
+| GET | `/api/billing/status` | Consultar plano |
+| POST | `/api/billing/checkout` | Criar Checkout Stripe |
+| POST | `/api/billing/portal` | Abrir portal de cobrança |
+| POST | `/api/billing/webhook` | Receber eventos Stripe assinados |
 | GET | `/api/projetos/:projetoId/execucoes` | Consultar histórico recente |
 
 Exemplo de corpo para criar um caso:
