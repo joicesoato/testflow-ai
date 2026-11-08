@@ -491,8 +491,8 @@ function SegurancaPage({ loggedIn }: { loggedIn: boolean }) {
           <h2>Qualidade com organização.</h2>
           <p>Conheça a plataforma e organize seus projetos de testes de API.</p>
         </div>
-        <Link className="primary" to="/register">
-          Criar minha conta <span>→</span>
+        <Link className="primary" to={loggedIn ? "/projects" : "/register"}>
+          {loggedIn ? "Acessar meus projetos" : "Criar minha conta"} <span>→</span>
         </Link>
       </section>
     </main>
@@ -1181,7 +1181,7 @@ function ProjectDetails({
 
 function BillingPage({ token }: { token: string }) {
   const [status, setStatus] = useState<any>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
-  const [message, setMessage] = useState(new URLSearchParams(window.location.search).get("checkout") === "success" ? "Checkout concluído. A confirmação depende do webhook Stripe." : "");
+  const [message] = useState(new URLSearchParams(window.location.search).get("checkout") === "success" ? "Checkout concluído. A confirmação depende do webhook Stripe." : "");
   useEffect(() => { apiRequest("/api/billing/status", token).then(data => setStatus(data.assinatura)).catch(err => setError(err.message)).finally(() => setLoading(false)); }, [token]);
   async function action(path: string) { setLoading(true); setError(""); try { const data = await apiRequest(path, token, { method: "POST" }); if (data.url) window.location.assign(data.url); } catch (err) { setError(err instanceof Error ? err.message : "Falha na cobrança."); } finally { setLoading(false); } }
   return <main className="workspace narrow"><div className="page-heading"><div><span className="eyebrow">CONTA E PLANO</span><h1>Assinatura</h1><p>Consulte seu plano e gerencie a cobrança.</p></div></div>
