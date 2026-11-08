@@ -214,8 +214,8 @@ router.put("/:projetoId/casos/:casoId", exigir("cases:update"), async (req, res)
     const c = validacao.campos;
     const [result] = await pool.execute(
       `UPDATE casos_teste SET titulo=?, descricao=?, metodo=?, endpoint=?, headers=?, corpo=?, status_esperado=?
-       WHERE id=? AND projeto_id=? AND usuario_id=? AND modo_execucao="http"` ,
-      [c.titulo, c.descricao, c.metodo, c.endpoint, JSON.stringify(c.headers), c.corpo === null ? null : JSON.stringify(c.corpo), c.status_esperado, req.params.casoId, projeto.id, req.usuario.id]
+       WHERE id=? AND projeto_id=? AND usuario_id=? AND modo_execucao=?` ,
+      [c.titulo, c.descricao, c.metodo, c.endpoint, JSON.stringify(c.headers), c.corpo === null ? null : JSON.stringify(c.corpo), c.status_esperado, req.params.casoId, projeto.id, req.usuario.id, "http"]
     );
     if (!result.affectedRows) return res.status(404).json({ erro: "Caso HTTP não encontrado." });
     await auditar(req, "caso_teste.atualizado", { projeto_id: projeto.id, caso_id: Number(req.params.casoId) });
