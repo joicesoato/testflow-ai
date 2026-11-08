@@ -7,6 +7,8 @@ const rateLimit = require("express-rate-limit");
 const projetosRouter = require("./routes/projetos");
 const casosRouter = require("./routes/casos");
 const authRouter = require("./routes/auth");
+const simulacoesRouter = require("./routes/simulacoes");
+const billingRouter = require("./routes/billing");
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -18,7 +20,7 @@ if (!Number.isInteger(trustProxyHops) || trustProxyHops < 0) {
 
 app.set("trust proxy", trustProxyHops);
 app.disable("x-powered-by");
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "1mb", verify(req, _res, buffer) { if (req.originalUrl === "/api/billing/webhook") req.rawBody = Buffer.from(buffer); } }));
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -59,6 +61,8 @@ app.get("/health", (_req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api/projetos", projetosRouter);
 app.use("/api/projetos", casosRouter);
+app.use("/api/projetos", simulacoesRouter);
+app.use("/api/billing", billingRouter);
 
 app.get("/api/status", (_req, res) => {
   res.status(200).json({
