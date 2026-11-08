@@ -120,7 +120,7 @@ function Shell({
   );
 }
 
-function Landing() {
+function Landing({ loggedIn }: { loggedIn: boolean }) {
   return (
     <>
       <main>
@@ -1301,7 +1301,7 @@ export default function App() {
   return (
     <Shell user={user} onLogout={logout}>
       <Routes>
-        <Route path="/" element={<Landing />} />
+        <Route path="/" element={<Landing loggedIn={Boolean(token)} />} />
         <Route path="/produto" element={<ProdutoPage loggedIn={Boolean(token)} />} />
         <Route path="/seguranca" element={<SegurancaPage loggedIn={Boolean(token)} />} />
         <Route path="/billing" element={<Protected token={token}><BillingPage token={token || ""} /></Protected>} />
