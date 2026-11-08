@@ -205,6 +205,23 @@ router.post("/:projetoId/casos", exigir("cases:create"), async (req, res) => {
   }
 });
 
+router.put("/:projetoId/casos/:casoId", exigir("cases:update"), async (req, res) => {
+  const validacao = validarCaso(req.body || {});
+  if (validacao.erro) return res.status(400).json({ erro: validacao.erro });
+  try {
+    const projeto = await projetoDoUsuario(req.params.projetoId, req.usuario.id);
+    if (!projeto) return res.status(404).json({ erro: "Projeto não encontrado." });
+    const c = validacao.campos;
+    const [result] = await pool.execute(
+      `UPDATE casos_teste SET titulo=?, descricao=?, metodo=?, endpoint=?, headers=?, corpo=?, status_esperado=?
+       WHERE id=? AND projeto_id=? AND usuario_id=? AND modo_execucao="http"` ,
+      [c.titulo, c.descricao, c.metodo, c.endpoint, JSON.stringify(c.headers), c.corpo === null ? null : JSON.stringify(c.corpo), c.status_esperado, req.params.casoId, projeto.id, req.usuario.id]
+    );
+    if (!result.affectedRows) return res.status(404).json({ erro: "Caso HTTP não encontrado." });
+    await auditar(req, "caso_teste.atualizado", { projeto_id: projeto.id, caso_id: Number(req.params.casoId) });
+    res.json({ mensagem: "Caso de teste atualizado." });
+  } catch (error) { console.error("Erro ao atualizar caso:", error.message); res.status(500).json({ erro: "Não foi possível atualizar o caso." }); }
+});
 router.delete("/:projetoId/casos/:casoId", exigir("cases:delete"), async (req, res) => {
   try {
     const [result] = await pool.execute(
