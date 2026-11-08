@@ -96,6 +96,7 @@ function Shell({
           <Brand />
           <nav>
             <Link to="/projects">Projetos</Link>
+            {user && <Link to="/billing">Assinatura</Link>}
             <Link to="/produto">Produto</Link>
             <Link to="/seguranca">Segurança</Link>
           </nav>
@@ -327,8 +328,8 @@ function Landing() {
               de API em um só lugar.
             </p>
           </div>
-          <Link className="primary" to="/register">
-            Criar minha conta <span>→</span>
+          <Link className="primary" to={loggedIn ? "/projects" : "/register"}>
+            {loggedIn ? "Acessar meus projetos" : "Criar minha conta"} <span>→</span>
           </Link>
         </section>
       </main>
@@ -337,7 +338,7 @@ function Landing() {
 }
 
 
-function ProdutoPage() {
+function ProdutoPage({ loggedIn }: { loggedIn: boolean }) {
   return (
     <main>
       <section className="section">
@@ -411,15 +412,15 @@ function ProdutoPage() {
           <h2>Mais clareza em cada teste.</h2>
           <p>Crie sua conta e comece a estruturar seus projetos de testes de API.</p>
         </div>
-        <Link className="primary" to="/register">
-          Criar minha conta <span>→</span>
+        <Link className="primary" to={loggedIn ? "/projects" : "/register"}>
+          {loggedIn ? "Acessar meus projetos" : "Criar minha conta"} <span>→</span>
         </Link>
       </section>
     </main>
   );
 }
 
-function SegurancaPage() {
+function SegurancaPage({ loggedIn }: { loggedIn: boolean }) {
   return (
     <main>
       <section className="security">
@@ -834,6 +835,7 @@ type TestCase = {
   endpoint: string;
   status_esperado: number;
   ultimo_status?: string | null;
+  modo_execucao?: "http" | "simulacao";
 };
 
 function CasesPanel({ token, project, canManage }: { token: string; project: Project; canManage: boolean }) {
@@ -843,6 +845,9 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
   const [method, setMethod] = useState("GET");
   const [expected, setExpected] = useState("200");
   const [objective, setObjective] = useState("");
+  const [simulationTitle, setSimulationTitle] = useState("");
+  const [simulationData, setSimulationData] = useState('{"status":"ok","total":3}');
+  const [simulationAssertions, setSimulationAssertions] = useState('[{"path":"status","operator":"equals","expected":"ok"},{"path":"total","operator":"greater_than","expected":0}]');
   const [loading, setLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -885,6 +890,22 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
     }
   }
 
+  async function createSimulation(event: FormEvent) {
+    event.preventDefault(); setLoading(true); setError(""); setMessage(""); setLastResult(null);
+    try {
+      const dados = JSON.parse(simulationData); const assertions = JSON.parse(simulationAssertions);
+      await apiRequest("/api/projetos/" + project.id + "/casos-simulacao", token, { method: "POST", body: JSON.stringify({ titulo: simulationTitle, dados_teste: dados, assertions }) });
+      setSimulationTitle(""); setMessage("Cenário de simulação cadastrado. Nenhuma requisição externa será realizada."); await loadCases();
+    } catch (err) { setError(err instanceof Error ? err.message : "Confira os JSONs informados."); } finally { setLoading(false); }
+  }
+
+  async function executeSimulation(id: number) {
+    setLoading(true); setError(""); setMessage(""); setLastResult(null);
+    try {
+      const data = await apiRequest("/api/projetos/" + project.id + "/casos/" + id + "/executar-simulacao", token, { method: "POST" });
+      setLastResult({ ...data.execucao, resposta: JSON.stringify(data.execucao.resumo, null, 2) }); setMessage(data.mensagem); await loadCases();
+    } catch (err) { setError(err instanceof Error ? err.message : "Falha na simulação."); } finally { setLoading(false); }
+  }
   async function generateWithAI() {
     setAiLoading(true);
     setError("");
@@ -940,7 +961,7 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
       <div className="list-heading">
         <div>
           <h2>Casos de teste</h2>
-          <p>Crie cenários, gere sugestões com IA e execute requisições reais.</p>
+          <p>Crie cenários, gere sugestões com IA e escolha entre requisição HTTP real ou simulação local sem URL.</p>
         </div>
         <span className="case-count">{cases.length} casos</span>
       </div>
@@ -969,6 +990,17 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
         {!project.baseUrl && <small>Cadastre a URL base da API para habilitar a geração.</small>}
       </div>}
 
+      {canManage && <div className="case-create-panel">
+        <h3>Simulação sem URL</h3>
+        <p>Valide regras e estruturas de dados localmente. Este modo não chama APIs nem acessa a internet.</p>
+        <form className="panel-form" onSubmit={createSimulation}>
+          <label>Título do cenário<input value={simulationTitle} onChange={event => setSimulationTitle(event.target.value)} required maxLength={160} placeholder="Ex.: Validar retorno de cadastro" /></label>
+          <label>Dados de teste (JSON)<textarea rows={5} value={simulationData} onChange={event => setSimulationData(event.target.value)} required spellCheck={false} /></label>
+          <label>Verificações (JSON)<textarea rows={6} value={simulationAssertions} onChange={event => setSimulationAssertions(event.target.value)} required spellCheck={false} /></label>
+          <small>Operadores: equals, not_equals, exists, not_exists, contains, greater_than, less_than, is_true, is_false e is_type.</small>
+          <button className="secondary" type="submit" disabled={loading || !simulationTitle.trim()}>{loading ? "Salvando..." : "Criar cenário de simulação"}</button>
+        </form>
+      </div>}
       {canManage && <div className="case-create-panel">
         <h3>Novo caso manual</h3>
         <form className="case-form" onSubmit={createCase}>
@@ -1007,12 +1039,12 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
               <span className="method-tag">{item.metodo}</span>
               <div>
                 <b>{item.titulo}</b>
-                <small>{item.endpoint} · Esperado HTTP {item.status_esperado}</small>
+                <small>{item.modo_execucao === "simulacao" ? "SIMULAÇÃO LOCAL · sem chamada de rede" : item.endpoint + " · Esperado HTTP " + item.status_esperado}</small>
               </div>
             </div>
             <div className="case-item-actions">
               {item.ultimo_status && <span className={`status-tag ${item.ultimo_status}`}>{item.ultimo_status}</span>}
-              <button className="primary small-button" type="button" disabled={loading} onClick={() => executeCase(item.id)}>Executar</button>
+              <button className="primary small-button" type="button" disabled={loading} onClick={() => item.modo_execucao === "simulacao" ? executeSimulation(item.id) : executeCase(item.id)}>{item.modo_execucao === "simulacao" ? "Simular" : "Executar"}</button>
               {canManage && <button className="text-button" type="button" onClick={() => deleteCase(item.id)}>Excluir</button>}
             </div>
           </article>
@@ -1147,6 +1179,15 @@ function ProjectDetails({
   );
 }
 
+function BillingPage({ token }: { token: string }) {
+  const [status, setStatus] = useState<any>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
+  const [message, setMessage] = useState(new URLSearchParams(window.location.search).get("checkout") === "success" ? "Checkout concluído. A confirmação depende do webhook Stripe." : "");
+  useEffect(() => { apiRequest("/api/billing/status", token).then(data => setStatus(data.assinatura)).catch(err => setError(err.message)).finally(() => setLoading(false)); }, [token]);
+  async function action(path: string) { setLoading(true); setError(""); try { const data = await apiRequest(path, token, { method: "POST" }); if (data.url) window.location.assign(data.url); } catch (err) { setError(err instanceof Error ? err.message : "Falha na cobrança."); } finally { setLoading(false); } }
+  return <main className="workspace narrow"><div className="page-heading"><div><span className="eyebrow">CONTA E PLANO</span><h1>Assinatura</h1><p>Consulte seu plano e gerencie a cobrança.</p></div></div>
+    {error && <div className="form-error">{error}</div>}{message && <div className="form-success">{message}</div>}
+    {loading && !status ? <div className="empty-state">Carregando assinatura...</div> : <section className="case-create-panel"><span className="eyebrow">PLANO ATUAL</span><h2>{status?.plano === "pro" ? "TestFlow Pro" : "Plano gratuito"}</h2><p>Status: {status?.status || "inactive"}</p>{status?.periodo_fim && <p>Período até {new Date(status.periodo_fim).toLocaleDateString("pt-BR")}</p>}{status?.cancelar_no_fim && <p>Cancelamento programado ao fim do período.</p>}{status?.plano === "pro" ? <button className="primary" disabled={loading} onClick={() => action("/api/billing/portal")}>Gerenciar assinatura</button> : <button className="primary" disabled={loading} onClick={() => action("/api/billing/checkout")}>Assinar TestFlow Pro</button>}<small>Checkout depende da configuração de chaves e preço recorrente no servidor.</small></section>}</main>;
+}
 function Protected({
   token,
   children
@@ -1261,8 +1302,9 @@ export default function App() {
     <Shell user={user} onLogout={logout}>
       <Routes>
         <Route path="/" element={<Landing />} />
-        <Route path="/produto" element={<ProdutoPage />} />
-        <Route path="/seguranca" element={<SegurancaPage />} />
+        <Route path="/produto" element={<ProdutoPage loggedIn={Boolean(token)} />} />
+        <Route path="/seguranca" element={<SegurancaPage loggedIn={Boolean(token)} />} />
+        <Route path="/billing" element={<Protected token={token}><BillingPage token={token || ""} /></Protected>} />
 
         <Route
           path="/login"
