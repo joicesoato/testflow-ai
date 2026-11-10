@@ -2,6 +2,7 @@ const express = require("express");
 const mysql = require("mysql2/promise");
 const dns = require("node:dns/promises");
 const net = require("node:net");
+const { createFreeExecutionLimit } = require("../services/execution-limit");
 
 const router = express.Router();
 const pool = mysql.createPool({
@@ -17,6 +18,7 @@ const pool = mysql.createPool({
 const AUTH_URL = process.env.AUTH_SERVICE_URL || "http://auth-service:3001";
 const LOG_URL = process.env.LOG_SERVICE_URL || "http://log-service:3002";
 const INTERNAL_SECRET = process.env.INTERNAL_SERVICE_SECRET;
+const limitarExecucoesFree = createFreeExecutionLimit(pool);
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
 async function autenticar(req, res, next) {
@@ -334,7 +336,7 @@ Regras: endpoint deve ser caminho relativo iniciado por /; não use URL completa
   }
 });
 
-router.post("/:projetoId/casos/:casoId/executar", exigir("executions:create"), async (req, res) => {
+router.post("/:projetoId/casos/:casoId/executar", exigir("executions:create"), limitarExecucoesFree, async (req, res) => {
   const inicio = Date.now();
   try {
     const projeto = await projetoDoUsuario(req.params.projetoId, req.usuario.id);
@@ -396,6 +398,8 @@ router.post("/:projetoId/casos/:casoId/executar", exigir("executions:create"), a
       console.error("Não foi possível registrar erro da execução:", dbError.message);
     }
     res.status(400).json({ erro: message || "Falha ao executar o teste." });
+  } finally {
+    await req.liberarLockExecucaoFree?.();
   }
 });
 

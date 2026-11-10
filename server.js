@@ -9,6 +9,7 @@ const casosRouter = require("./routes/casos");
 const authRouter = require("./routes/auth");
 const simulacoesRouter = require("./routes/simulacoes");
 const billingRouter = require("./routes/billing");
+const adminRouter = require("./routes/admin");
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -63,6 +64,7 @@ app.use("/api/projetos", projetosRouter);
 app.use("/api/projetos", casosRouter);
 app.use("/api/projetos", simulacoesRouter);
 app.use("/api/billing", billingRouter);
+app.use("/api/admin", adminRouter);
 
 app.get("/api/status", (_req, res) => {
   res.status(200).json({

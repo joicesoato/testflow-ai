@@ -26,6 +26,27 @@ type Project = {
 
 type ProjectFormData = Omit<Project, "id">;
 
+type AdminDashboardData = {
+  metricas: {
+    usuarios_total: number;
+    usuarios_free: number;
+    usuarios_pro: number;
+    assinaturas_ativas: number;
+    assinaturas_past_due: number;
+    mrr_centavos: number;
+    moeda: string;
+  };
+  uso: { execucoes_mes: number; usuarios_que_executaram: number };
+  eventos_recentes: Array<{
+    id: string;
+    usuario_id: number | null;
+    acao: string;
+    timestamp: string;
+    detalhes: Record<string, unknown>;
+  }>;
+  avisos: string[];
+};
+
 const TOKEN_KEY = "testflow_token";
 const USER_KEY = "testflow_user";
 
@@ -97,6 +118,7 @@ function Shell({
           <nav>
             <Link to="/projects">Projetos</Link>
             {user && <Link to="/billing">Assinatura</Link>}
+            {user && <Link to="/admin">Admin</Link>}
             <Link to="/produto">Produto</Link>
             <Link to="/seguranca">Segurança</Link>
           </nav>
@@ -1188,6 +1210,88 @@ function BillingPage({ token }: { token: string }) {
     {error && <div className="form-error">{error}</div>}{message && <div className="form-success">{message}</div>}
     {loading && !status ? <div className="empty-state">Carregando assinatura...</div> : <section className="case-create-panel"><span className="eyebrow">PLANO ATUAL</span><h2>{status?.plano === "pro" ? "TestFlow Pro" : "Plano gratuito"}</h2><p>Status: {status?.status || "inactive"}</p>{status?.periodo_fim && <p>Período até {new Date(status.periodo_fim).toLocaleDateString("pt-BR")}</p>}{status?.cancelar_no_fim && <p>Cancelamento programado ao fim do período.</p>}{status?.plano === "pro" ? <button className="primary" disabled={loading} onClick={() => action("/api/billing/portal")}>Gerenciar assinatura</button> : <button className="primary" disabled={loading} onClick={() => action("/api/billing/checkout")}>Assinar TestFlow Pro</button>}<small>Checkout depende da configuração de chaves e preço recorrente no servidor.</small></section>}</main>;
 }
+
+function AdminDashboard({ token }: { token: string }) {
+  const [dashboard, setDashboard] = useState<AdminDashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError("");
+    apiRequest("/api/admin/dashboard", token, { signal: AbortSignal.timeout(20000) })
+      .then(data => { if (active) setDashboard(data); })
+      .catch(err => { if (active) setError(err instanceof Error ? err.message : "Não foi possível carregar o painel."); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [token, attempt]);
+
+  const money = (centavos: number, currency: string) =>
+    (centavos / 100).toLocaleString("pt-BR", { style: "currency", currency });
+
+  return (
+    <main className="workspace admin-workspace">
+      <div className="page-heading">
+        <div>
+          <span className="eyebrow">GESTÃO DA PLATAFORMA</span>
+          <h1>Painel administrativo</h1>
+          <p>Visão geral de contas, assinaturas, uso e atividade recente.</p>
+        </div>
+        <button className="secondary" type="button" onClick={() => setAttempt(value => value + 1)} disabled={loading}>
+          {loading ? "Atualizando..." : "Atualizar"}
+        </button>
+      </div>
+
+      {error && <div className="form-error admin-error" role="alert">
+        <span>{error}</span>
+        <button className="secondary" type="button" onClick={() => setAttempt(value => value + 1)} disabled={loading}>Tentar novamente</button>
+      </div>}
+      {loading && !dashboard && <div className="empty-state" role="status">Carregando métricas administrativas...</div>}
+      {dashboard && <>
+        {dashboard.avisos.map((aviso, index) => <div className="admin-warning" role="status" key={`${index}-${aviso}`}>{aviso}</div>)}
+
+        <section className="admin-metrics" aria-label="Métricas da plataforma">
+          <article className="admin-metric"><span>Usuários totais</span><strong>{dashboard.metricas.usuarios_total.toLocaleString("pt-BR")}</strong></article>
+          <article className="admin-metric"><span>Plano Free</span><strong>{dashboard.metricas.usuarios_free.toLocaleString("pt-BR")}</strong></article>
+          <article className="admin-metric"><span>Plano Pro</span><strong>{dashboard.metricas.usuarios_pro.toLocaleString("pt-BR")}</strong></article>
+          <article className="admin-metric"><span>Assinaturas ativas</span><strong>{dashboard.metricas.assinaturas_ativas.toLocaleString("pt-BR")}</strong></article>
+          <article className="admin-metric"><span>Pagamento pendente</span><strong>{dashboard.metricas.assinaturas_past_due.toLocaleString("pt-BR")}</strong></article>
+          <article className="admin-metric"><span>MRR estimado</span><strong>{money(dashboard.metricas.mrr_centavos, dashboard.metricas.moeda)}</strong></article>
+        </section>
+
+        <div className="admin-dashboard-columns">
+          <section className="admin-section">
+            <div className="admin-section-heading"><div><span className="eyebrow">MÊS ATUAL</span><h2>Uso da plataforma</h2></div></div>
+            <div className="admin-usage">
+              <div><span>Execuções registradas</span><strong>{dashboard.uso.execucoes_mes.toLocaleString("pt-BR")}</strong></div>
+              <div><span>Usuários que executaram</span><strong>{dashboard.uso.usuarios_que_executaram.toLocaleString("pt-BR")}</strong></div>
+            </div>
+          </section>
+
+          <section className="admin-section">
+            <div className="admin-section-heading"><div><span className="eyebrow">REDIS STREAMS</span><h2>Eventos recentes</h2></div></div>
+            {dashboard.eventos_recentes.length === 0 ? (
+              <div className="admin-empty">Nenhum evento recente.</div>
+            ) : (
+              <ol className="admin-events">
+                {dashboard.eventos_recentes.map(evento => (
+                  <li key={evento.id}>
+                    <div className="admin-event-top"><strong>{evento.acao}</strong><time dateTime={evento.timestamp}>{new Date(evento.timestamp).toLocaleString("pt-BR")}</time></div>
+                    <span>Usuário {evento.usuario_id ?? "não identificado"}</span>
+                    {Object.keys(evento.detalhes).length > 0 && <pre>{JSON.stringify(evento.detalhes, null, 2)}</pre>}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+        </div>
+      </>}
+    </main>
+  );
+}
+
 function Protected({
   token,
   children
@@ -1305,6 +1409,7 @@ export default function App() {
         <Route path="/produto" element={<ProdutoPage loggedIn={Boolean(token)} />} />
         <Route path="/seguranca" element={<SegurancaPage loggedIn={Boolean(token)} />} />
         <Route path="/billing" element={<Protected token={token}><BillingPage token={token || ""} /></Protected>} />
+        <Route path="/admin" element={<Protected token={token}><AdminDashboard token={token || ""} /></Protected>} />
 
         <Route
           path="/login"

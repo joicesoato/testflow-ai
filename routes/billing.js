@@ -41,16 +41,16 @@ async function autenticar(req, res, next) {
 }
 function unixDate(value) { return value ? new Date(value * 1000) : null; }
 
-async function salvarAssinatura(subscription, customerId, userIdHint) {
+async function salvarAssinatura(subscription, customerId, userIdHint, executor = pool) {
   let userId = Number(subscription.metadata?.userId || userIdHint);
   if (!Number.isInteger(userId) || userId <= 0) {
-    const [rows] = await pool.execute("SELECT usuario_id FROM assinaturas WHERE stripe_customer_id = ?", [String(customerId)]);
+    const [rows] = await executor.execute("SELECT usuario_id FROM assinaturas WHERE stripe_customer_id = ?", [String(customerId)]);
     userId = rows[0]?.usuario_id;
   }
   if (!userId) throw new Error("Assinatura recebida sem usuário associado.");
   const priceId = subscription.items?.data?.[0]?.price?.id || null;
-  const ativo = ["active", "trialing", "past_due"].includes(subscription.status);
-  await pool.execute(
+  const ativo = ["active", "trialing"].includes(subscription.status);
+  await executor.execute(
     `INSERT INTO assinaturas (usuario_id, stripe_customer_id, stripe_subscription_id, stripe_price_id, plano, status, periodo_inicio, periodo_fim, cancelar_no_fim)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE stripe_customer_id=VALUES(stripe_customer_id), stripe_subscription_id=VALUES(stripe_subscription_id),
@@ -80,34 +80,59 @@ router.post("/webhook", async (req, res) => {
   try {
     await connection.beginTransaction();
     const [existing] = await connection.execute("SELECT id FROM stripe_eventos WHERE stripe_event_id = ? FOR UPDATE", [event.id]);
-    if (existing.length) { await connection.commit(); return res.json({ recebido: true, duplicado: true }); }
+    if (existing.length) {
+      await connection.commit();
+      return res.json({ recebido: true, duplicado: true });
+    }
     await connection.execute("INSERT INTO stripe_eventos (stripe_event_id, tipo) VALUES (?, ?)", [event.id, event.type]);
-    await connection.commit();
-  } catch (error) {
-    await connection.rollback();
-    if (error.code === "ER_DUP_ENTRY") return res.json({ recebido: true, duplicado: true });
-    console.error("Falha ao registrar evento Stripe:", error.message);
-    return res.status(500).json({ erro: "Não foi possível registrar o evento." });
-  } finally { connection.release(); }
-  try {
+
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
       if (session.subscription) {
         const subscription = await stripeData("subscriptions/" + session.subscription);
-        await salvarAssinatura(subscription, session.customer, Number(session.metadata?.userId || session.client_reference_id));
+        await salvarAssinatura(subscription, session.customer, Number(session.metadata?.userId || session.client_reference_id), connection);
       }
     } else if (event.type.startsWith("customer.subscription.")) {
       const subscription = event.data.object;
-      await salvarAssinatura(subscription, subscription.customer);
+      await salvarAssinatura(subscription, subscription.customer, undefined, connection);
+    } else if (event.type === "invoice.payment_failed") {
+      const invoice = event.data.object;
+      const subscriptionRef = invoice.subscription || invoice.parent?.subscription_details?.subscription;
+      const subscriptionId = typeof subscriptionRef === "object" ? subscriptionRef?.id : subscriptionRef;
+      const customerId = typeof invoice.customer === "object" ? invoice.customer?.id : invoice.customer;
+      if (subscriptionId) {
+        const [rows] = await connection.execute(
+          "SELECT id FROM assinaturas WHERE stripe_subscription_id=? FOR UPDATE",
+          [String(subscriptionId)]
+        );
+        if (!rows.length) throw new Error("A assinatura da fatura não foi encontrada.");
+        await connection.execute(
+          "UPDATE assinaturas SET plano='free', status='past_due' WHERE stripe_subscription_id=?",
+          [String(subscriptionId)]
+        );
+      } else if (customerId) {
+        const [rows] = await connection.execute(
+          "SELECT id FROM assinaturas WHERE stripe_customer_id=? FOR UPDATE",
+          [String(customerId)]
+        );
+        if (!rows.length) throw new Error("A assinatura do cliente da fatura não foi encontrada.");
+        await connection.execute(
+          "UPDATE assinaturas SET plano='free', status='past_due' WHERE stripe_customer_id=?",
+          [String(customerId)]
+        );
+      } else {
+        throw new Error("A fatura não contém referência de assinatura ou cliente.");
+      }
     } else if (event.type === "customer.deleted") {
-      await pool.execute("UPDATE assinaturas SET plano='free', status='canceled' WHERE stripe_customer_id=?", [String(event.data.object.id)]);
+      await connection.execute("UPDATE assinaturas SET plano='free', status='canceled' WHERE stripe_customer_id=?", [String(event.data.object.id)]);
     }
+    await connection.commit();
     res.json({ recebido: true });
   } catch (error) {
+    await connection.rollback().catch(() => {});
     console.error("Falha ao processar evento Stripe:", error.message);
-    await pool.execute("DELETE FROM stripe_eventos WHERE stripe_event_id=?", [event.id]).catch(() => {});
     res.status(500).json({ erro: "Falha ao processar evento de cobrança." });
-  }
+  } finally { connection.release(); }
 });
 
 router.use(autenticar);

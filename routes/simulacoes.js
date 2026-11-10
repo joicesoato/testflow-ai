@@ -1,5 +1,6 @@
 const express = require("express");
 const mysql = require("mysql2/promise");
+const { createFreeExecutionLimit } = require("../services/execution-limit");
 
 const router = express.Router();
 const pool = mysql.createPool({
@@ -13,6 +14,7 @@ const pool = mysql.createPool({
 });
 const AUTH_URL = process.env.AUTH_SERVICE_URL || "http://auth-service:3001";
 const INTERNAL_SECRET = process.env.INTERNAL_SERVICE_SECRET || "";
+const limitarExecucoesFree = createFreeExecutionLimit(pool);
 
 async function autenticar(req, res, next) {
   const authorization = req.get("Authorization");
@@ -91,7 +93,7 @@ router.post("/:projetoId/casos-simulacao", exigir("cases:create"), async (req, r
   }
 });
 
-router.post("/:projetoId/casos/:casoId/executar-simulacao", exigir("executions:create"), async (req, res) => {
+router.post("/:projetoId/casos/:casoId/executar-simulacao", exigir("executions:create"), limitarExecucoesFree, async (req, res) => {
   const started = Date.now();
   try {
     const [rows] = await pool.execute(
@@ -125,6 +127,8 @@ router.post("/:projetoId/casos/:casoId/executar-simulacao", exigir("executions:c
   } catch (error) {
     console.error("Erro na simulação:", error.message);
     res.status(500).json({ erro: "Não foi possível executar a simulação." });
+  } finally {
+    await req.liberarLockExecucaoFree?.();
   }
 });
 

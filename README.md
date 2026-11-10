@@ -108,7 +108,7 @@ A aplicação local fica disponível na porta `3000`. No Codespaces, abra a port
 
 Para criar um teste sem URL, use o painel **Simulação sem URL** nos detalhes do projeto. Informe os dados JSON e as verificações desejadas. Os operadores disponíveis são `equals`, `not_equals`, `exists`, `not_exists`, `contains`, `greater_than`, `less_than`, `is_true`, `is_false` e `is_type`. Ao executar, a plataforma avalia os dados localmente e identifica explicitamente o resultado como simulação; nenhuma requisição HTTP é enviada.
 
-A página **Assinatura** apresenta o estado do plano, permite iniciar o Checkout e abrir o portal de cobrança. Configure `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID` e `APP_URL` no servidor. No Dashboard Stripe, cadastre o endpoint `/api/billing/webhook` do seu domínio e habilite `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted` e `customer.deleted`. Use somente chaves de teste durante a validação.
+A página **Assinatura** apresenta o estado do plano, permite iniciar o Checkout e abrir o portal de cobrança. Configure `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID` e `APP_URL` no servidor. No Dashboard Stripe, cadastre o endpoint `/api/billing/webhook` do seu domínio e habilite `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed` e `customer.deleted`. Use somente chaves de teste durante a validação.
 
 Para uma primeira validação, pode ser usada uma API pública de testes, como `https://jsonplaceholder.typicode.com`. Exemplo de caso: método `GET`, endpoint `/posts/1`, status esperado `200`.
 
@@ -129,6 +129,7 @@ Todas as rotas abaixo exigem token Bearer válido.
 | POST | `/api/billing/checkout` | Criar Checkout Stripe |
 | POST | `/api/billing/portal` | Abrir portal de cobrança |
 | POST | `/api/billing/webhook` | Receber eventos Stripe assinados |
+| GET | `/api/admin/dashboard` | Consultar métricas e eventos administrativos |
 | GET | `/api/projetos/:projetoId/execucoes` | Consultar histórico recente |
 
 Exemplo de corpo para criar um caso:
