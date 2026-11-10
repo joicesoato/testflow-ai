@@ -845,6 +845,7 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
   const [objective, setObjective] = useState("");
   const [loading, setLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiFailed, setAiFailed] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [lastResult, setLastResult] = useState<any>(null);
@@ -887,18 +888,34 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
 
   async function generateWithAI() {
     setAiLoading(true);
+    setAiFailed(false);
     setError("");
     setMessage("");
     setLastResult(null);
     try {
       const data = await apiRequest(`/api/projetos/${project.id}/casos/gerar-ia`, token, {
         method: "POST",
-        body: JSON.stringify({ objetivo: objective })
+        body: JSON.stringify({ objetivo: objective }),
+        signal: AbortSignal.timeout(48000)
       });
       setMessage(data.mensagem || "Casos gerados com IA.");
-      await loadCases();
+      if (Array.isArray(data.casos)) {
+        setCases(current => {
+          const porId = new Map(current.map(item => [item.id, item]));
+          data.casos.forEach((item: TestCase) => porId.set(item.id, item));
+          return [...porId.values()];
+        });
+      }
+      await loadCases().catch(() => undefined);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao gerar com IA.");
+      setAiFailed(true);
+      if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
+        setError("A geração excedeu o tempo limite. Você pode tentar novamente.");
+      } else if (err instanceof TypeError) {
+        setError("Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.");
+      } else {
+        setError(err instanceof Error ? err.message : "Não foi possível gerar os casos. Tente novamente.");
+      }
     } finally {
       setAiLoading(false);
     }
@@ -964,7 +981,7 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
           />
         </label>
         <button className="primary" type="button" onClick={generateWithAI} disabled={aiLoading || !project.baseUrl}>
-          {aiLoading ? "Gerando com Gemini..." : "✦ Gerar casos com IA"}
+          {aiLoading ? "Gerando com Gemini..." : aiFailed ? "↻ Tentar novamente" : "✦ Gerar casos com IA"}
         </button>
         {!project.baseUrl && <small>Cadastre a URL base da API para habilitar a geração.</small>}
       </div>}

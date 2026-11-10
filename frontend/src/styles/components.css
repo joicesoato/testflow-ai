@@ -115,3 +115,43 @@
 @media(prefers-reduced-motion:reduce) {
   *,*::before,*::after {scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
+
+/* Correção dos cards de detalhes do projeto */
+.detail-stats {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.6fr);
+  gap: 16px;
+  margin: 30px 0 45px;
+}
+
+.detail-stats > div {
+  min-width: 0;
+  padding: 20px;
+  background: #111d2e;
+  border: 1px solid #293a52;
+  border-radius: 9px;
+}
+
+.detail-stats span {
+  display: block;
+  color: #8192aa;
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  margin-bottom: 12px;
+}
+
+.detail-stats strong {
+  display: block;
+  color: #e8edf7;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+@media (max-width: 700px) {
+  .detail-stats {
+    grid-template-columns: 1fr;
+  }
+}

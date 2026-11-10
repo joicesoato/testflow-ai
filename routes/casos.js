@@ -2,6 +2,7 @@ const express = require("express");
 const mysql = require("mysql2/promise");
 const dns = require("node:dns/promises");
 const net = require("node:net");
+const { generateContentWithFallback } = require("../services/gemini");
 
 const router = express.Router();
 const pool = mysql.createPool({
@@ -17,7 +18,7 @@ const pool = mysql.createPool({
 const AUTH_URL = process.env.AUTH_SERVICE_URL || "http://auth-service:3001";
 const LOG_URL = process.env.LOG_SERVICE_URL || "http://log-service:3002";
 const INTERNAL_SECRET = process.env.INTERNAL_SERVICE_SECRET;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || "";
 
 async function autenticar(req, res, next) {
   const authorization = req.get("Authorization");
@@ -97,6 +98,62 @@ function validarCaso(body) {
   const status = body.status_esperado === "" || body.status_esperado === undefined ? 200 : Number(body.status_esperado);
   if (!Number.isInteger(status) || status < 100 || status > 599) return { erro: "Status HTTP esperado inválido." };
   return { campos: { titulo, descricao: String(body.descricao || "").slice(0, 4000), metodo, endpoint, headers, corpo, status_esperado: status } };
+}
+
+function chaveCaso(caso) {
+  const ordenar = value => Array.isArray(value)
+    ? value.map(ordenar)
+    : value && typeof value === "object"
+      ? Object.fromEntries(Object.keys(value).sort().map(key => [key, ordenar(value[key])]))
+      : value;
+  return JSON.stringify([
+    caso.titulo, caso.descricao, caso.metodo, caso.endpoint,
+    ordenar(caso.headers), ordenar(caso.corpo), caso.status_esperado
+  ]);
+}
+
+async function gerarCasosGemini(prompt, apiKey) {
+  const { data } = await generateContentWithFallback(prompt, apiKey, GEMINI_MODEL);
+  const raw = data?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("") || "";
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    const error = new Error("O Gemini retornou uma resposta que não contém JSON válido.");
+    error.code = "GEMINI_INVALID_RESPONSE";
+    error.status = 502;
+    throw error;
+  }
+  if (!Array.isArray(parsed?.casos) || parsed.casos.length < 3 || parsed.casos.length > 5) {
+    const error = new Error("O Gemini não retornou entre 3 e 5 casos de teste válidos.");
+    error.code = "GEMINI_INVALID_RESPONSE";
+    error.status = 502;
+    throw error;
+  }
+
+  const casos = parsed.casos.map(item => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      const error = new Error("O Gemini retornou um ou mais casos inválidos. Nenhum caso foi salvo.");
+      error.code = "GEMINI_INVALID_RESPONSE";
+      error.status = 502;
+      throw error;
+    }
+    const validacao = validarCaso(item);
+    if (validacao.erro) {
+      const error = new Error("O Gemini retornou um ou mais casos inválidos. Nenhum caso foi salvo.");
+      error.code = "GEMINI_INVALID_RESPONSE";
+      error.status = 502;
+      throw error;
+    }
+    return validacao.campos;
+  });
+  if (new Set(casos.map(chaveCaso)).size !== casos.length) {
+    const error = new Error("O Gemini retornou casos duplicados. Nenhum caso foi salvo.");
+    error.code = "GEMINI_INVALID_RESPONSE";
+    error.status = 502;
+    throw error;
+  }
+  return casos;
 }
 
 function ipv4Privado(ip) {
@@ -235,85 +292,60 @@ Objetivo/contexto informado: ${objetivo || "Criar cenários básicos positivos, 
 Responda somente JSON válido no formato:
 {"casos":[{"titulo":"...","descricao":"...","metodo":"GET","endpoint":"/caminho","headers":{},"corpo":null,"status_esperado":200}]}
 Regras: endpoint deve ser caminho relativo iniciado por /; não use URL completa; métodos GET, POST, PUT, PATCH, DELETE, HEAD ou OPTIONS; status esperado inteiro; não invente autenticação nem dados secretos; prefira cenários seguros e sem operações destrutivas.`;
-    const modelos = [...new Set([GEMINI_MODEL, "gemini-3.5-flash-lite"])];
-    let response;
-    let data = {};
-
-    for (const modelo of modelos) {
-      response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelo)}:generateContent`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: 0.2,
-              responseMimeType: "application/json",
-              maxOutputTokens: 4096
-            }
-          }),
-          signal: AbortSignal.timeout(90000)
-        }
-      );
-
-      data = await response.json().catch(() => ({}));
-
-      if (response.ok) {
-        console.log(`Geração de casos concluída com ${modelo}.`);
-        break;
-      }
-
-      console.error(`Gemini ${modelo} respondeu HTTP ${response.status}:`,
-        data.error?.message || "Erro sem detalhes");
-
-      const temporario = [429, 500, 502, 503, 504].includes(response.status);
-
-      if (!temporario || modelo === modelos[modelos.length - 1]) {
-        const status = response.status === 503 || response.status === 429 ? 503 : 502;
-        return res.status(status).json({
-          erro: response.status === 503
-            ? "O serviço de IA está temporariamente congestionado. Tente novamente em instantes."
-            : response.status === 429
-              ? "O limite de solicitações da IA foi atingido. Tente novamente mais tarde."
-              : "A integração com o Gemini retornou um erro. Verifique a configuração e os logs."
-        });
-      }
-    }
-
-    if (!response?.ok) {
-      return res.status(502).json({ erro: "Não foi possível gerar casos com IA." });
-    }
-
-    const raw = data.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
-    let parsed;
-    try { parsed = JSON.parse(raw); } catch { throw new Error("A resposta da IA não veio em JSON válido."); }
-    if (!Array.isArray(parsed.casos) || !parsed.casos.length) throw new Error("A IA não retornou casos de teste.");
+    const casosGerados = await gerarCasosGemini(prompt, apiKey);
     const salvos = [];
-    for (const item of parsed.casos.slice(0, 5)) {
-      const validacao = validarCaso(item);
-      if (validacao.erro) continue;
-      const c = validacao.campos;
-      const [result] = await pool.execute(
-        `INSERT INTO casos_teste
-         (projeto_id, usuario_id, titulo, descricao, metodo, endpoint, headers, corpo, status_esperado)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [projeto.id, req.usuario.id, c.titulo, c.descricao, c.metodo, c.endpoint,
-         JSON.stringify(c.headers), c.corpo === null ? null : JSON.stringify(c.corpo), c.status_esperado]
+    let novos = 0;
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      await connection.execute(
+        "SELECT id FROM projetos WHERE id = ? AND usuario_id = ? FOR UPDATE",
+        [projeto.id, req.usuario.id]
       );
-      salvos.push({ id: result.insertId, ...c });
+      const [existentes] = await connection.execute(
+        `SELECT id, titulo, descricao, metodo, endpoint, headers, corpo, status_esperado
+         FROM casos_teste WHERE projeto_id = ? AND usuario_id = ?`,
+        [projeto.id, req.usuario.id]
+      );
+      const porChave = new Map();
+      for (const existente of existentes) {
+        const headers = typeof existente.headers === "string" ? JSON.parse(existente.headers || "{}") : (existente.headers || {});
+        const corpo = typeof existente.corpo === "string" ? JSON.parse(existente.corpo) : existente.corpo;
+        const validacao = validarCaso({ ...existente, headers, corpo });
+        if (!validacao.erro) porChave.set(chaveCaso(validacao.campos), existente.id);
+      }
+      for (const caso of casosGerados) {
+        const chave = chaveCaso(caso);
+        const idExistente = porChave.get(chave);
+        if (idExistente) {
+          salvos.push({ id: idExistente, ...caso });
+          continue;
+        }
+        const [result] = await connection.execute(
+          `INSERT INTO casos_teste
+           (projeto_id, usuario_id, titulo, descricao, metodo, endpoint, headers, corpo, status_esperado)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [projeto.id, req.usuario.id, caso.titulo, caso.descricao, caso.metodo, caso.endpoint,
+           JSON.stringify(caso.headers), caso.corpo === null ? null : JSON.stringify(caso.corpo), caso.status_esperado]
+        );
+        porChave.set(chave, result.insertId);
+        salvos.push({ id: result.insertId, ...caso });
+        novos += 1;
+      }
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
     }
-    if (!salvos.length) throw new Error("A IA gerou cenários que não passaram pela validação.");
-    await auditar(req, "casos_teste.gerados_ia", { projeto_id: projeto.id, quantidade: salvos.length });
+    await auditar(req, "casos_teste.gerados_ia", { projeto_id: projeto.id, quantidade: salvos.length, novos });
     res.status(201).json({ mensagem: `${salvos.length} casos gerados e salvos com Gemini.`, casos: salvos });
   } catch (error) {
-    const timedOut = error.name === "TimeoutError" || error.name === "AbortError";
-    console.error("Erro na geração Gemini:", error.message);
-    res.status(timedOut ? 504 : 502).json({
-      erro: timedOut
-        ? "O Gemini demorou mais de 90 segundos para responder. Tente novamente."
-        : (error.message || "Não foi possível gerar os casos com IA.")
-    });
+    console.error("Erro na geração Gemini:", error.code || "GENERATION_FAILED");
+    const status = error.status || 500;
+    const mensagem = error.code ? error.message : "Não foi possível salvar os casos gerados.";
+    res.status(status).json({ erro: mensagem, codigo: error.code || "GENERATION_FAILED" });
   }
 });
 
