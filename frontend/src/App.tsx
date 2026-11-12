@@ -119,8 +119,6 @@ function Shell({
             <Link to="/projects">Projetos</Link>
             {user && <Link to="/billing">Assinatura</Link>}
             {user && <Link to="/admin">Admin</Link>}
-            <Link to="/produto">Produto</Link>
-            <Link to="/seguranca">Segurança</Link>
           </nav>
           {user ? (
             <button className="nav-cta" onClick={onLogout}>
@@ -359,167 +357,6 @@ function Landing({ loggedIn }: { loggedIn: boolean }) {
   );
 }
 
-
-function ProdutoPage({ loggedIn }: { loggedIn: boolean }) {
-  return (
-    <main>
-      <section className="section">
-        <span className="section-kicker">PRODUTO TESTFLOW AI</span>
-        <h2>
-          Qualidade de software
-          <br />
-          <em>em um único fluxo.</em>
-        </h2>
-        <p className="section-intro">
-          Organize projetos, documente cenários de teste e acompanhe
-          as etapas de validação das suas APIs REST em um só lugar.
-        </p>
-
-        <div className="feature-grid">
-          <div className="feature">
-            <span>01 / PROJETOS</span>
-            <h3>Organização centralizada</h3>
-            <p>Cadastre projetos, endereços de API e ambientes de trabalho.</p>
-          </div>
-          <div className="feature">
-            <span>02 / CENÁRIOS</span>
-            <h3>Casos de teste</h3>
-            <p>Estruture requisições e resultados esperados para cada API.</p>
-          </div>
-          <div className="feature">
-            <span>03 / EXECUÇÕES</span>
-            <h3>Acompanhamento</h3>
-            <p>Organize execuções e acompanhe os resultados dos testes.</p>
-          </div>
-          <div className="feature">
-            <span>04 / EVIDÊNCIAS</span>
-            <h3>Rastreabilidade</h3>
-            <p>Mantenha registros associados às execuções dos testes.</p>
-          </div>
-        </div>
-      </section>
-
-      <section className="workflow">
-        <div>
-          <span className="section-kicker">COMO FUNCIONA</span>
-          <h2>Do projeto à evidência, em um fluxo.</h2>
-          <p>
-            O TestFlow AI organiza as etapas necessárias para estruturar
-            e acompanhar testes de software.
-          </p>
-        </div>
-        <ol>
-          <li>
-            <b>Cadastre seu projeto</b>
-            <span>Defina a API e o ambiente que deseja testar.</span>
-          </li>
-          <li>
-            <b>Organize os casos de teste</b>
-            <span>Descreva cenários, parâmetros e resultados esperados.</span>
-          </li>
-          <li>
-            <b>Execute os testes</b>
-            <span>Acompanhe os resultados das requisições.</span>
-          </li>
-          <li>
-            <b>Registre evidências</b>
-            <span>Centralize informações para análise e rastreabilidade.</span>
-          </li>
-        </ol>
-      </section>
-
-      <section className="closing">
-        <div>
-          <span className="section-kicker">COMECE A ORGANIZAR</span>
-          <h2>Mais clareza em cada teste.</h2>
-          <p>Crie sua conta e comece a estruturar seus projetos de testes de API.</p>
-        </div>
-        <Link className="primary" to={loggedIn ? "/projects" : "/register"}>
-          {loggedIn ? "Acessar meus projetos" : "Criar minha conta"} <span>→</span>
-        </Link>
-      </section>
-    </main>
-  );
-}
-
-function SegurancaPage({ loggedIn }: { loggedIn: boolean }) {
-  return (
-    <main>
-      <section className="security">
-        <span className="section-kicker">SEGURANÇA E CONTROLE</span>
-        <h2>
-          Seus projetos com
-          <br />
-          <em>acesso organizado.</em>
-        </h2>
-        <p className="section-intro">
-          A plataforma utiliza mecanismos de autenticação, controle de
-          permissões e registros de atividades para organizar o acesso
-          aos recursos.
-        </p>
-
-        <div className="security-grid">
-          <div>
-            <b>Autenticação</b>
-            <p>Acesso protegido por conta e sessão autenticada.</p>
-          </div>
-          <div>
-            <b>Permissões</b>
-            <p>Operações controladas conforme o perfil de acesso.</p>
-          </div>
-          <div>
-            <b>Isolamento</b>
-            <p>Projetos vinculados aos respectivos usuários.</p>
-          </div>
-          <div>
-            <b>Auditoria</b>
-            <p>Registro de ações importantes realizadas na plataforma.</p>
-          </div>
-        </div>
-      </section>
-
-      <section className="workflow">
-        <div>
-          <span className="section-kicker">CONTROLE DE ACESSO</span>
-          <h2>Organização em cada operação.</h2>
-          <p>
-            Os recursos da plataforma consideram a identidade do usuário
-            autenticado e as permissões associadas ao seu perfil.
-          </p>
-        </div>
-        <ol>
-          <li>
-            <b>Identificação</b>
-            <span>O usuário acessa a plataforma com sua conta.</span>
-          </li>
-          <li>
-            <b>Autorização</b>
-            <span>As operações verificam as permissões necessárias.</span>
-          </li>
-          <li>
-            <b>Isolamento</b>
-            <span>As consultas de projetos consideram o usuário autenticado.</span>
-          </li>
-          <li>
-            <b>Rastreabilidade</b>
-            <span>Ações importantes podem ser registradas para auditoria.</span>
-          </li>
-        </ol>
-      </section>
-
-      <section className="closing">
-        <div>
-          <span className="section-kicker">TESTFLOW AI</span>
-          <h2>Qualidade com organização.</h2>
-          <p>Conheça a plataforma e organize seus projetos de testes de API.</p>
-        </div>
-        <Link className="primary" to={loggedIn ? "/projects" : "/register"}>
-          {loggedIn ? "Acessar meus projetos" : "Criar minha conta"} <span>→</span>
-        </Link>
-      </section>
-    </main>
-  );
-}
 
 function AuthPage({
   mode,
@@ -994,7 +831,7 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
       {canManage && <div className="case-ai-panel">
         <div>
           <span className="eyebrow">TESTFLOW AI</span>
-          <h3>Gerar casos com Gemini</h3>
+          <h3>Gerar casos com Groq</h3>
           <p>A IA analisa o contexto e cria cenários que são salvos neste projeto.</p>
         </div>
         <label>
@@ -1007,7 +844,7 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
           />
         </label>
         <button className="primary" type="button" onClick={generateWithAI} disabled={aiLoading || !project.baseUrl}>
-          {aiLoading ? "Gerando com Gemini..." : "✦ Gerar casos com IA"}
+          {aiLoading ? "Gerando com Groq..." : "✦ Gerar casos com IA"}
         </button>
         {!project.baseUrl && <small>Cadastre a URL base da API para habilitar a geração.</small>}
       </div>}
@@ -1054,7 +891,7 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
 
       <div className="case-list">
         {cases.length === 0 ? (
-          <div className="pending-panel"><b>Nenhum caso cadastrado</b><span>Crie um caso manualmente ou use a geração com Gemini.</span></div>
+          <div className="pending-panel"><b>Nenhum caso cadastrado</b><span>Crie um caso manualmente ou use a geração com Groq.</span></div>
         ) : cases.map(item => (
           <article className="case-item" key={item.id}>
             <div className="case-item-main">
@@ -1406,8 +1243,8 @@ export default function App() {
     <Shell user={user} onLogout={logout}>
       <Routes>
         <Route path="/" element={<Landing loggedIn={Boolean(token)} />} />
-        <Route path="/produto" element={<ProdutoPage loggedIn={Boolean(token)} />} />
-        <Route path="/seguranca" element={<SegurancaPage loggedIn={Boolean(token)} />} />
+        <Route path="/produto" element={<Navigate to="/" replace />} />
+        <Route path="/seguranca" element={<Navigate to="/" replace />} />
         <Route path="/billing" element={<Protected token={token}><BillingPage token={token || ""} /></Protected>} />
         <Route path="/admin" element={<Protected token={token}><AdminDashboard token={token || ""} /></Protected>} />
 
