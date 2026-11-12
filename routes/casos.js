@@ -269,7 +269,8 @@ Regras: endpoint deve ser caminho relativo iniciado por /; não use URL completa
           { role: "user", content: prompt }
         ],
         temperature: 0.2,
-        max_tokens: 4096,
+        max_completion_tokens: 8192,
+        reasoning_effort: "low",
         response_format: { type: "json_object" }
       }),
       signal: AbortSignal.timeout(60000)
@@ -287,9 +288,24 @@ Regras: endpoint deve ser caminho relativo iniciado por /; não use URL completa
       return res.status(502).json({ erro: "O Groq não conseguiu gerar os casos agora. Tente novamente em instantes." });
     }
 
-    const raw = data.choices?.[0]?.message?.content || "";
+    const choice = data.choices?.[0];
+    const raw = typeof choice?.message?.content === "string" ? choice.message.content.trim() : "";
+    if (!raw) {
+      console.error("Groq retornou conteúdo vazio:", {
+        modelo,
+        finish_reason: choice?.finish_reason || "indisponível",
+        message_fields: Object.keys(choice?.message || {})
+      });
+      throw new Error("A IA respondeu sem retornar os casos. Tente novamente; se persistir, altere GROQ_MODEL no servidor.");
+    }
     let parsed;
-    try { parsed = JSON.parse(raw); } catch { throw new Error("A resposta da IA não veio em JSON válido."); }
+    try {
+      const normalized = raw.replace(/^\x60{3}(?:json)?\s*/i, "").replace(/\s*\x60{3}$/, "");
+      parsed = JSON.parse(normalized);
+    } catch {
+      console.error("Groq retornou JSON inválido:", raw.slice(0, 500));
+      throw new Error("A IA retornou um formato inválido. Tente novamente.");
+    }
     if (!Array.isArray(parsed.casos) || !parsed.casos.length) throw new Error("A IA não retornou casos de teste.");
 
     const salvos = [];
