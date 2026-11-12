@@ -1109,9 +1109,9 @@ function BillingPage({ token }: { token: string }) {
             {status.cancelar_no_fim && <p>Cancelamento programado ao fim do período.</p>}
           </> : <h2>Não foi possível confirmar seu plano</h2>}
         </div>
-        {status && (isPro
+        {isPro
           ? <button className="primary" type="button" disabled={actionLoading} onClick={() => action("/api/billing/portal")}>{actionLoading ? "Abrindo..." : "Gerenciar assinatura"}</button>
-          : <button className="primary" type="button" disabled={actionLoading} onClick={() => action("/api/billing/checkout")}>{actionLoading ? "Preparando..." : "Assinar TestFlow Pro"}</button>)}
+          : <button className="primary" type="button" disabled={actionLoading} onClick={() => action("/api/billing/checkout")}>{actionLoading ? "Preparando..." : "Assinar TestFlow Pro"}</button>}
       </section>
       <div className="billing-plans">
         <article className="billing-plan">
@@ -1132,6 +1132,8 @@ function BillingPage({ token }: { token: string }) {
             <li>Histórico e gerenciamento da assinatura</li>
           </ul>
           <span className="plan-note">Preço exibido no Checkout Stripe antes da confirmação.</span>
+          {!isPro && <button className="primary billing-upgrade" type="button" disabled={actionLoading} onClick={() => action("/api/billing/checkout")}>{actionLoading ? "Preparando Checkout..." : "Fazer upgrade para Pro"}</button>}
+          {isPro && <span className="plan-current">Seu plano atual</span>}
         </article>
       </div>
       <p className="billing-footnote">A disponibilidade do checkout depende da configuração das credenciais de teste ou produção, do preço recorrente e do webhook Stripe no servidor.</p>
@@ -1276,6 +1278,21 @@ export default function App() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (!token) return;
+    let active = true;
+    apiRequest("/api/auth/me", token)
+      .then(data => {
+        if (!active || !data.usuario) return;
+        setUser(data.usuario);
+        sessionStorage.setItem(USER_KEY, JSON.stringify(data.usuario));
+      })
+      .catch(() => {
+        // A falha de atualização de perfil não invalida automaticamente a sessão.
+      });
+    return () => { active = false; };
+  }, [token]);
 
   useEffect(() => {
     if (token) loadProjects();
