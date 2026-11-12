@@ -42,7 +42,7 @@ async function autenticar(req, res, next) {
 function unixDate(value) { return value ? new Date(value * 1000) : null; }
 
 function getAppUrl() {
-  const appUrl = String(process.env.APP_URL || "").replace(/\\/+$/, "");
+  const appUrl = String(process.env.APP_URL || "").replace(/\/+$/, "");
   let parsed;
   try { parsed = new URL(appUrl); } catch {
     const error = new Error("Configure APP_URL com o endereço completo da aplicação.");
