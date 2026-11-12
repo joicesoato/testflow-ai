@@ -240,13 +240,15 @@ router.delete("/:projetoId/casos/:casoId", exigir("cases:delete"), async (req, r
 });
 
 router.post("/:projetoId/casos/gerar-ia", exigir("cases:create"), async (req, res) => {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return res.status(503).json({ erro: "Configure GEMINI_API_KEY no ambiente do servidor para habilitar a geração com IA." });
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) return res.status(503).json({ erro: "Configure GROQ_API_KEY no ambiente do servidor para habilitar a geração com IA." });
+  const modelo = process.env.GROQ_MODEL || "qwen/qwen3.8-27b";
   const objetivo = typeof req.body?.objetivo === "string" ? req.body.objetivo.trim().slice(0, 3000) : "";
   try {
     const projeto = await projetoDoUsuario(req.params.projetoId, req.usuario.id);
     if (!projeto) return res.status(404).json({ erro: "Projeto não encontrado." });
     if (!projeto.url_base) return res.status(400).json({ erro: "Cadastre a URL base da API no projeto antes de gerar os casos." });
+
     const prompt = `Você é especialista em QA de APIs REST. Gere de 3 a 5 casos de teste úteis para esta API.
 Projeto: ${projeto.nome}
 URL base: ${projeto.url_base}
@@ -254,60 +256,43 @@ Objetivo/contexto informado: ${objetivo || "Criar cenários básicos positivos, 
 Responda somente JSON válido no formato:
 {"casos":[{"titulo":"...","descricao":"...","metodo":"GET","endpoint":"/caminho","headers":{},"corpo":null,"status_esperado":200}]}
 Regras: endpoint deve ser caminho relativo iniciado por /; não use URL completa; métodos GET, POST, PUT, PATCH, DELETE, HEAD ou OPTIONS; status esperado inteiro; não invente autenticação nem dados secretos; prefira cenários seguros e sem operações destrutivas.`;
-    const modelos = [...new Set([GEMINI_MODEL, "gemini-3.5-flash-lite"])];
-    let response;
-    let data = {};
 
-    for (const modelo of modelos) {
-      response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelo)}:generateContent`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-          body: JSON.stringify({
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: 0.2,
-              responseMimeType: "application/json",
-              maxOutputTokens: 4096
-            }
-          }),
-          signal: AbortSignal.timeout(90000)
-        }
-      );
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: modelo,
+        messages: [
+          { role: "system", content: "Você gera casos de teste de API. Retorne somente um objeto JSON válido, sem markdown." },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.2,
+        max_tokens: 4096,
+        response_format: { type: "json_object" }
+      }),
+      signal: AbortSignal.timeout(60000)
+    });
 
-      data = await response.json().catch(() => ({}));
-
-      if (response.ok) {
-        console.log(`Geração de casos concluída com ${modelo}.`);
-        break;
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.error(`Groq respondeu HTTP ${response.status}:`, data.error?.message || "Erro sem detalhes");
+      if (response.status === 401 || response.status === 403) {
+        return res.status(503).json({ erro: "A chave do Groq é inválida ou não tem permissão. Confira GROQ_API_KEY nas variáveis do servidor." });
       }
-
-      console.error(`Gemini ${modelo} respondeu HTTP ${response.status}:`,
-        data.error?.message || "Erro sem detalhes");
-
-      const temporario = [429, 500, 502, 503, 504].includes(response.status);
-
-      if (!temporario || modelo === modelos[modelos.length - 1]) {
-        const status = response.status === 503 || response.status === 429 ? 503 : 502;
-        return res.status(status).json({
-          erro: response.status === 503
-            ? "O serviço de IA está temporariamente congestionado. Tente novamente em instantes."
-            : response.status === 429
-              ? "O limite de solicitações da IA foi atingido. Tente novamente mais tarde."
-              : "A integração com o Gemini retornou um erro. Verifique a configuração e os logs."
-        });
+      if (response.status === 429) {
+        return res.status(503).json({ erro: "O limite gratuito de uso do Groq foi atingido. Aguarde alguns minutos e tente novamente." });
       }
+      return res.status(502).json({ erro: "O Groq não conseguiu gerar os casos agora. Tente novamente em instantes." });
     }
 
-    if (!response?.ok) {
-      return res.status(502).json({ erro: "Não foi possível gerar casos com IA." });
-    }
-
-    const raw = data.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
+    const raw = data.choices?.[0]?.message?.content || "";
     let parsed;
     try { parsed = JSON.parse(raw); } catch { throw new Error("A resposta da IA não veio em JSON válido."); }
     if (!Array.isArray(parsed.casos) || !parsed.casos.length) throw new Error("A IA não retornou casos de teste.");
+
     const salvos = [];
     for (const item of parsed.casos.slice(0, 5)) {
       const validacao = validarCaso(item);
@@ -323,14 +308,14 @@ Regras: endpoint deve ser caminho relativo iniciado por /; não use URL completa
       salvos.push({ id: result.insertId, ...c });
     }
     if (!salvos.length) throw new Error("A IA gerou cenários que não passaram pela validação.");
-    await auditar(req, "casos_teste.gerados_ia", { projeto_id: projeto.id, quantidade: salvos.length });
-    res.status(201).json({ mensagem: `${salvos.length} casos gerados e salvos com Gemini.`, casos: salvos });
+    await auditar(req, "casos_teste.gerados_ia", { projeto_id: projeto.id, quantidade: salvos.length, provedor: "groq", modelo });
+    res.status(201).json({ mensagem: `${salvos.length} casos gerados e salvos com Groq.`, casos: salvos });
   } catch (error) {
     const timedOut = error.name === "TimeoutError" || error.name === "AbortError";
-    console.error("Erro na geração Gemini:", error.message);
+    console.error("Erro na geração Groq:", error.message);
     res.status(timedOut ? 504 : 502).json({
       erro: timedOut
-        ? "O Gemini demorou mais de 90 segundos para responder. Tente novamente."
+        ? "O Groq demorou mais de 60 segundos para responder. Tente novamente."
         : (error.message || "Não foi possível gerar os casos com IA.")
     });
   }
