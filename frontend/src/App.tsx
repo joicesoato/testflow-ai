@@ -781,7 +781,7 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
         method: "POST",
         body: JSON.stringify({ objetivo: objective })
       });
-      setCases((data.casos || []).map((item: any) => ({ ...item, id: Number(item.id), modo_execucao: "http" })));
+      setCases((data.casos || []).map((item: any) => ({ ...item, id: Number(item.id), modo_execucao: "http" as const })));
       setMessage(data.mensagem || "Casos gerados com IA.");
       setError("");
       loadCases().catch(() => {
