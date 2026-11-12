@@ -37,7 +37,7 @@ services:
       STRIPE_WEBHOOK_SECRET: "${STRIPE_WEBHOOK_SECRET}"
       STRIPE_PRICE_ID: "${STRIPE_PRICE_ID}"
       GROQ_API_KEY: ${GROQ_API_KEY}
-      GROQ_MODEL: ${GROQ_MODEL:-qwen/qwen3.8-27b}
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
 
     ports:
       - "3000:3000"
