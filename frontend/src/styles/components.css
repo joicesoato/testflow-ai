@@ -152,3 +152,7 @@
 .admin-events pre { max-height:130px; overflow:auto; margin:10px 0 0; padding:10px; border-radius:6px; background:rgba(0,0,0,.2); color:#c9d6e5; font-size:10px; white-space:pre-wrap; overflow-wrap:anywhere; }
 @media(max-width:800px) { .admin-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .admin-dashboard-columns { grid-template-columns:1fr; } }
 @media(max-width:500px) { .admin-metrics { grid-template-columns:1fr; } .admin-workspace .page-heading .secondary { width:100%; } .admin-error { align-items:stretch; flex-direction:column; } .admin-event-top { flex-direction:column; } }
+
+/* Workspace mais amplo em monitores e notebooks */
+@media(min-width:701px){.workspace{max-width:1500px;padding-left:4%;padding-right:4%}.workspace.narrow{max-width:820px}.project-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:1500px){.project-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
