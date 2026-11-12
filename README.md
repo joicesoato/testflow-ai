@@ -10,7 +10,7 @@ Projeto acadêmico da disciplina **ISW055 — Introdução à Computação em Nu
 - Cadastro/login integrado ao serviço de autenticação.
 - CRUD de projetos com isolamento por usuário.
 - Cadastro e exclusão de casos de teste.
-- Geração de cenários com Gemini API e gravação dos casos no MariaDB.
+- Geração de cenários com Groq API e gravação dos casos no MariaDB.
 - Execução real de requisições HTTP a partir do backend.
 - Cenários de simulação sem URL, com dados JSON e verificações determinísticas executadas localmente, sem chamadas de rede.
 - Comparação entre status HTTP recebido e esperado nos cenários HTTP.
@@ -27,7 +27,7 @@ Projeto acadêmico da disciplina **ISW055 — Introdução à Computação em Nu
 - MariaDB 11.
 - Serviço de autenticação JWT.
 - Serviço de logs com Redis Streams.
-- Gemini API (`generateContent`) para geração de casos.
+- Groq API (`generateContent`) para geração de casos.
 - Docker Compose.
 
 ## Configuração no Codespaces
@@ -51,13 +51,13 @@ DB_HOST=db
 DB_NAME=testflow_ai
 DB_USER=testflow
 EMAIL_VERIFICATION_REQUIRED=false
-GEMINI_API_KEY=sua_chave_configurada_localmente
-GEMINI_MODEL=gemini-3.5-flash-lite
+GROQ_API_KEY=sua_chave_configurada_localmente
+GROQ_MODEL=openai/gpt-oss-120b
 ```
 
 `EMAIL_VERIFICATION_REQUIRED=false` é somente uma conveniência para desenvolvimento local sem SMTP. Em produção, mantenha `true` e configure um serviço de e-mail válido.
 
-A chave Gemini é usada exclusivamente pelo backend. Nunca a coloque no React, em `VITE_*`, em commits, prints ou mensagens.
+A chave Groq é usada exclusivamente pelo backend. Nunca a coloque no React, em `VITE_*`, em commits, prints ou mensagens.
 
 ### 2. Instalar dependências e compilar o frontend
 
@@ -102,7 +102,7 @@ A aplicação local fica disponível na porta `3000`. No Codespaces, abra a port
 1. Crie uma conta e entre na plataforma.
 2. Crie um projeto e informe a URL base pública da API.
 3. Abra os detalhes do projeto.
-4. Use **Gerar casos com IA** para gerar cenários com Gemini ou cadastre um caso manualmente.
+4. Use **Gerar casos com IA** para gerar cenários com Groq ou cadastre um caso manualmente.
 5. Clique em **Executar** para realizar a chamada HTTP.
 6. Confira o status recebido, o tempo de resposta e o conteúdo retornado.
 
@@ -120,7 +120,7 @@ Todas as rotas abaixo exigem token Bearer válido.
 |---|---|---|
 | GET | `/api/projetos/:projetoId/casos` | Listar casos do projeto |
 | POST | `/api/projetos/:projetoId/casos` | Criar caso manual |
-| POST | `/api/projetos/:projetoId/casos/gerar-ia` | Gerar e salvar casos com Gemini |
+| POST | `/api/projetos/:projetoId/casos/gerar-ia` | Gerar e salvar casos com Groq |
 | DELETE | `/api/projetos/:projetoId/casos/:casoId` | Excluir caso |
 | POST | `/api/projetos/:projetoId/casos/:casoId/executar` | Executar caso HTTP |
 | POST | `/api/projetos/:projetoId/casos-simulacao` | Criar cenário sem URL |
@@ -175,15 +175,15 @@ curl http://localhost:3000/health
 curl http://localhost:3000/api/status
 ```
 
-`npm test` verifica a sintaxe dos serviços Node.js. Isso não substitui os testes de integração com banco, autenticação, Gemini e uma API-alvo real.
+`npm test` verifica a sintaxe dos serviços Node.js. Isso não substitui os testes de integração com banco, autenticação, Groq e uma API-alvo real.
 
 ## Segurança e publicação
 
-- Não versionar `.env`, chaves Gemini, tokens, senhas ou credenciais.
+- Não versionar `.env`, chaves Groq, tokens, senhas ou credenciais.
 - Configurar HTTPS e segredos exclusivos no ambiente publicado.
 - Manter `EMAIL_VERIFICATION_REQUIRED=true` em produção.
 - Aplicar a migração somente após backup e confirmação do banco.
-- Configurar `GEMINI_API_KEY` como variável secreta no ambiente de execução.
+- Configurar `GROQ_API_KEY` como variável secreta no ambiente de execução.
 - Conferir permissões e isolamento entre usuários antes da publicação.
 - Revisar `SECURITY.md`, `VALIDACAO.md` e `docker-compose.portainer.yml` antes do deploy.
 
