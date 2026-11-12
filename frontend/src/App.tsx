@@ -119,8 +119,6 @@ function Shell({
             <Link to="/projects">Projetos</Link>
             {user && <Link to="/billing">Assinatura</Link>}
             {user && <Link to="/admin">Admin</Link>}
-            <Link to="/produto">Produto</Link>
-            <Link to="/seguranca">Segurança</Link>
           </nav>
           {user ? (
             <button className="nav-cta" onClick={onLogout}>
@@ -994,7 +992,7 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
       {canManage && <div className="case-ai-panel">
         <div>
           <span className="eyebrow">TESTFLOW AI</span>
-          <h3>Gerar casos com Gemini</h3>
+          <h3>Gerar casos com Groq</h3>
           <p>A IA analisa o contexto e cria cenários que são salvos neste projeto.</p>
         </div>
         <label>
@@ -1007,7 +1005,7 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
           />
         </label>
         <button className="primary" type="button" onClick={generateWithAI} disabled={aiLoading || !project.baseUrl}>
-          {aiLoading ? "Gerando com Gemini..." : "✦ Gerar casos com IA"}
+          {aiLoading ? "Gerando com Groq..." : "✦ Gerar casos com IA"}
         </button>
         {!project.baseUrl && <small>Cadastre a URL base da API para habilitar a geração.</small>}
       </div>}
@@ -1054,7 +1052,7 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
 
       <div className="case-list">
         {cases.length === 0 ? (
-          <div className="pending-panel"><b>Nenhum caso cadastrado</b><span>Crie um caso manualmente ou use a geração com Gemini.</span></div>
+          <div className="pending-panel"><b>Nenhum caso cadastrado</b><span>Crie um caso manualmente ou use a geração com Groq.</span></div>
         ) : cases.map(item => (
           <article className="case-item" key={item.id}>
             <div className="case-item-main">
@@ -1406,8 +1404,8 @@ export default function App() {
     <Shell user={user} onLogout={logout}>
       <Routes>
         <Route path="/" element={<Landing loggedIn={Boolean(token)} />} />
-        <Route path="/produto" element={<ProdutoPage loggedIn={Boolean(token)} />} />
-        <Route path="/seguranca" element={<SegurancaPage loggedIn={Boolean(token)} />} />
+        <Route path="/produto" element={<Navigate to="/" replace />} />
+        <Route path="/seguranca" element={<Navigate to="/" replace />} />
         <Route path="/billing" element={<Protected token={token}><BillingPage token={token || ""} /></Protected>} />
         <Route path="/admin" element={<Protected token={token}><AdminDashboard token={token || ""} /></Protected>} />
 
