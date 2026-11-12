@@ -10,7 +10,7 @@ Projeto acadêmico da disciplina **ISW055 — Introdução à Computação em Nu
 - Cadastro/login integrado ao serviço de autenticação.
 - CRUD de projetos com isolamento por usuário.
 - Cadastro e exclusão de casos de teste.
-- Geração de cenários com Groq API e gravação dos casos no MariaDB.
+- Geração de cenários com Groq API e gravação dos casos no MariaDB (requer `GROQ_API_KEY` configurada).
 - Execução real de requisições HTTP a partir do backend.
 - Cenários de simulação sem URL, com dados JSON e verificações determinísticas executadas localmente, sem chamadas de rede.
 - Comparação entre status HTTP recebido e esperado nos cenários HTTP.
@@ -27,7 +27,7 @@ Projeto acadêmico da disciplina **ISW055 — Introdução à Computação em Nu
 - MariaDB 11.
 - Serviço de autenticação JWT.
 - Serviço de logs com Redis Streams.
-- Groq API (`generateContent`) para geração de casos.
+- Groq API compatível com OpenAI (`/chat/completions`) para geração de casos.
 - Docker Compose.
 
 ## Configuração no Codespaces
