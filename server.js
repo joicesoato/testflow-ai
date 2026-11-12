@@ -71,8 +71,9 @@ app.get("/api/status", (_req, res) => {
     product: "TestFlow AI",
     stage: "mvp-api-tests",
     api: "projects-cases-executions",
-    ai: process.env.GEMINI_API_KEY ? "gemini-configured" : "gemini-not-configured",
-    message: "APIs de projetos, casos de teste e execução disponíveis."
+    ai: process.env.GROQ_API_KEY ? "groq-configured" : "groq-not-configured",
+    ai_model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
+    message: "APIs de projetos, casos de teste, geração com Groq e execução disponíveis."
   });
 });
 
