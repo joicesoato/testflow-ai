@@ -118,7 +118,7 @@ function Shell({
           <nav>
             <Link to="/projects">Projetos</Link>
             {user && <Link to="/billing">Assinatura</Link>}
-            {user && <Link to="/admin">Admin</Link>}
+            {user?.role === "admin" && <Link to="/admin">Admin</Link>}
           </nav>
           {user ? (
             <button className="nav-cta" onClick={onLogout}>
@@ -775,8 +775,12 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
         method: "POST",
         body: JSON.stringify({ objetivo: objective })
       });
+      setCases((data.casos || []).map((item: any) => ({ ...item, id: Number(item.id), modo_execucao: "http" })));
       setMessage(data.mensagem || "Casos gerados com IA.");
-      await loadCases();
+      setError("");
+      loadCases().catch(() => {
+        setMessage("Casos gerados e salvos com Groq. A listagem foi atualizada com os registros retornados pela geração.");
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao gerar com IA.");
     } finally {
@@ -849,8 +853,8 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
         {!project.baseUrl && <small>Cadastre a URL base da API para habilitar a geração.</small>}
       </div>}
 
-      {canManage && <div className="case-create-panel">
-        <h3>Simulação sem URL</h3>
+      {canManage && <div className="case-create-panel simulation-upsell">
+        <h3>Simulação sem URL · TestFlow Pro</h3>
         <p>Valide regras e estruturas de dados localmente. Este modo não chama APIs nem acessa a internet.</p>
         <form className="panel-form" onSubmit={createSimulation}>
           <label>Título do cenário<input value={simulationTitle} onChange={event => setSimulationTitle(event.target.value)} required maxLength={160} placeholder="Ex.: Validar retorno de cadastro" /></label>
@@ -1246,7 +1250,7 @@ export default function App() {
         <Route path="/produto" element={<Navigate to="/" replace />} />
         <Route path="/seguranca" element={<Navigate to="/" replace />} />
         <Route path="/billing" element={<Protected token={token}><BillingPage token={token || ""} /></Protected>} />
-        <Route path="/admin" element={<Protected token={token}><AdminDashboard token={token || ""} /></Protected>} />
+        <Route path="/admin" element={<Protected token={token}>{user?.role === "admin" ? <AdminDashboard token={token || ""} /> : <Navigate to="/projects" replace />}</Protected>} />
 
         <Route
           path="/login"
