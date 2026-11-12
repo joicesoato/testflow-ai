@@ -168,18 +168,30 @@ router.get("/:projetoId/casos", exigir("cases:read"), async (req, res) => {
     if (!projeto) return res.status(404).json({ erro: "Projeto não encontrado." });
     const [casos] = await pool.execute(
       `SELECT c.id, c.titulo, c.descricao, c.metodo, c.endpoint, c.headers, c.corpo,
-              c.status_esperado, c.ativo, c.modo_execucao, c.criado_em,
-              (SELECT e.status FROM execucoes e WHERE e.caso_teste_id = c.id
-               AND e.projeto_id = c.projeto_id AND e.usuario_id = c.usuario_id
-               ORDER BY e.executado_em DESC LIMIT 1) AS ultimo_status
+              c.status_esperado, c.ativo, c.modo_execucao, c.criado_em
        FROM casos_teste c
        WHERE c.projeto_id = ? AND c.usuario_id = ?
        ORDER BY c.criado_em DESC`,
       [req.params.projetoId, req.usuario.id]
     );
+    if (casos.length) {
+      const [ultimasExecucoes] = await pool.execute(
+        `SELECT e.caso_teste_id, e.status
+         FROM execucoes e
+         INNER JOIN (
+           SELECT caso_teste_id, MAX(id) AS ultima_id
+           FROM execucoes
+           WHERE projeto_id = ? AND usuario_id = ?
+           GROUP BY caso_teste_id
+         ) ultimas ON ultimas.ultima_id = e.id`,
+        [req.params.projetoId, req.usuario.id]
+      );
+      const statusPorCaso = new Map(ultimasExecucoes.map(item => [String(item.caso_teste_id), item.status]));
+      for (const caso of casos) caso.ultimo_status = statusPorCaso.get(String(caso.id)) || null;
+    }
     res.json({ casos });
   } catch (error) {
-    console.error("Erro ao listar casos:", error.message);
+    console.error("Erro ao listar casos:", { code: error.code, message: error.message, sqlMessage: error.sqlMessage });
     res.status(500).json({ erro: "Não foi possível listar os casos de teste." });
   }
 });
