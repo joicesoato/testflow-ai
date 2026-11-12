@@ -241,7 +241,7 @@ router.delete("/:projetoId/casos/:casoId", exigir("cases:delete"), async (req, r
 router.post("/:projetoId/casos/gerar-ia", exigir("cases:create"), async (req, res) => {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return res.status(503).json({ erro: "Configure GROQ_API_KEY no ambiente do servidor para habilitar a geração com IA." });
-  const modelo = process.env.GROQ_MODEL || "qwen/qwen3.8-27b";
+  const modelo = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
   const objetivo = typeof req.body?.objetivo === "string" ? req.body.objetivo.trim().slice(0, 3000) : "";
   try {
     const projeto = await projetoDoUsuario(req.params.projetoId, req.usuario.id);
