@@ -40,6 +40,14 @@ async function projetoValido(id, usuarioId) {
   const [rows] = await pool.execute("SELECT id FROM projetos WHERE id=? AND usuario_id=?", [id, usuarioId]);
   return rows[0] || null;
 }
+async function exigirPlanoPro(usuarioId) {
+  const [rows] = await pool.execute(
+    "SELECT plano, status FROM assinaturas WHERE usuario_id = ? LIMIT 1",
+    [usuarioId]
+  );
+  return rows[0]?.plano === "pro" && ["active", "trialing"].includes(rows[0].status);
+}
+
 function pathValue(source, path) {
   if (!path) return source;
   return path.split(".").reduce((value, key) => value == null ? undefined : value[key], source);
@@ -80,6 +88,7 @@ router.post("/:projetoId/casos-simulacao", exigir("cases:create"), async (req, r
   if (invalid) return res.status(400).json({ erro: invalid });
   try {
     if (!await projetoValido(req.params.projetoId, req.usuario.id)) return res.status(404).json({ erro: "Projeto não encontrado." });
+    if (!await exigirPlanoPro(req.usuario.id)) return res.status(403).json({ erro: "A simulação sem URL é um recurso exclusivo do TestFlow Pro. Consulte a página Assinatura para conhecer os planos." });
     const [result] = await pool.execute(
       `INSERT INTO casos_teste
        (projeto_id, usuario_id, titulo, descricao, metodo, endpoint, modo_execucao, dados_teste, assertions_json, status_esperado)
@@ -96,6 +105,7 @@ router.post("/:projetoId/casos-simulacao", exigir("cases:create"), async (req, r
 router.post("/:projetoId/casos/:casoId/executar-simulacao", exigir("executions:create"), limitarExecucoesFree, async (req, res) => {
   const started = Date.now();
   try {
+    if (!await exigirPlanoPro(req.usuario.id)) return res.status(403).json({ erro: "A simulação sem URL é um recurso exclusivo do TestFlow Pro." });
     const [rows] = await pool.execute(
       `SELECT id, titulo, dados_teste, assertions_json FROM casos_teste
        WHERE id=? AND projeto_id=? AND usuario_id=? AND modo_execucao='simulacao' AND ativo=TRUE`,
