@@ -57,4 +57,32 @@ router.get("/verify-email", (req, res) =>
   encaminhar(req, res, "/verify-email", "GET")
 );
 
+
+router.get("/me", async (req, res) => {
+  const authorization = req.get("Authorization");
+  const internalSecret = process.env.INTERNAL_SERVICE_SECRET || "";
+  if (!authorization?.startsWith("Bearer ") || !internalSecret) {
+    return res.status(401).json({ erro: "Sessão não encontrada." });
+  }
+  try {
+    const response = await fetch(new URL("/authorize", AUTH_URL), {
+      headers: {
+        Authorization: authorization,
+        "X-Internal-Secret": internalSecret
+      },
+      signal: AbortSignal.timeout(5000)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.autenticado) {
+      return res.status(response.status === 401 ? 401 : 503).json({
+        erro: data.erro || "Não foi possível atualizar os dados da conta."
+      });
+    }
+    return res.json({ usuario: data.usuario, permissoes: data.permissoes || [] });
+  } catch (error) {
+    console.error("Falha ao atualizar sessão:", error.message);
+    return res.status(503).json({ erro: "Serviço de autenticação indisponível." });
+  }
+});
+
 module.exports = router;
