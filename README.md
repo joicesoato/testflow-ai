@@ -79,12 +79,20 @@ Aguarde MariaDB e os serviços ficarem saudáveis.
 
 ### 4. Aplicar a migração de domínio
 
-As migrações `database/migration-v8-testflow.sql` e `database/migration-v9-saas.sql` criam/atualizam o domínio, incluindo projetos, casos, execuções, evidências, modo de simulação e controle de assinaturas. A v8 deve ser aplicada primeiro; a v9 deve ser aplicada depois, no banco correto, após backup.
+As migrações `database/migration-v8-testflow.sql` e `database/migration-v9-saas.sql` criam/atualizam o domínio, incluindo projetos, casos, execuções, evidências, modo de simulação e controle de assinaturas. A v8 deve ser aplicada primeiro; a v9 deve ser aplicada depois, no banco correto, após backup. Sem a v9, a listagem de casos e a consulta de assinatura falham porque faltam `modo_execucao` e a tabela `assinaturas`.
 
 ```bash
 docker compose exec -T db sh -c 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"' < database/migration-v8-testflow.sql
 docker compose exec -T db sh -c 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"' < database/migration-v9-saas.sql
 ```
+
+Para liberar o painel administrativo na conta de teste autorizada, execute também o script separado, somente no ambiente de desenvolvimento/teste:
+
+```bash
+docker compose exec -T db sh -c 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"' < database/grant-admin-soatojoyce.sql
+```
+
+Depois, saia e entre novamente na conta para renovar o perfil carregado na sessão. O menu Admin aparece somente para `role = 'admin'`, e a API também valida o perfil no servidor.
 
 Confira as tabelas antes de prosseguir. Não execute `docker compose down -v` para tentar corrigir problemas: isso remove volumes e pode apagar dados.
 
