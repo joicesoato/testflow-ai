@@ -60,7 +60,7 @@ function createFreeExecutionLimit(pool, { limit = 3, lockTimeoutSeconds = 10 } =
       next();
     } catch (error) {
       await release();
-      console.error("Falha ao verificar limite de execuções Free:", error.message);
+      console.error("Falha ao verificar limite de execuções Free:", { code: error.code, message: error.message, sqlMessage: error.sqlMessage });
       if (!res.headersSent) {
         return res.status(503).json({ erro: "Não foi possível verificar o plano e o limite de execuções." });
       }
