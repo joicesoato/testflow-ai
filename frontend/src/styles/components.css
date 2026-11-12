@@ -152,3 +152,53 @@
 .admin-events pre { max-height:130px; overflow:auto; margin:10px 0 0; padding:10px; border-radius:6px; background:rgba(0,0,0,.2); color:#c9d6e5; font-size:10px; white-space:pre-wrap; overflow-wrap:anywhere; }
 @media(max-width:800px) { .admin-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .admin-dashboard-columns { grid-template-columns:1fr; } }
 @media(max-width:500px) { .admin-metrics { grid-template-columns:1fr; } .admin-workspace .page-heading .secondary { width:100%; } .admin-error { align-items:stretch; flex-direction:column; } .admin-event-top { flex-direction:column; } }
+
+
+/* Detalhes do projeto: os cartões usam span/strong no JSX */
+.detail-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.detail-stats > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 9px;
+  min-height: 88px;
+  padding: 18px 20px;
+  border: 1px solid #30415a;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #142238, #101b2b);
+}
+.detail-stats > div > span {
+  display: block;
+  color: #91a1b7;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.detail-stats > div > strong {
+  display: block;
+  max-width: 100%;
+  color: #e8edf7;
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+@media(max-width:600px) {
+  .detail-stats { grid-template-columns: 1fr; }
+}
+.billing-upgrade { margin-top: 20px; width: 100%; }
+.plan-current {
+  display: inline-flex;
+  align-self: flex-start;
+  margin-top: 20px;
+  padding: 8px 12px;
+  border: 1px solid #536f3b;
+  border-radius: 7px;
+  color: #c5f36a;
+  font-size: 11px;
+  font-weight: 700;
+}
