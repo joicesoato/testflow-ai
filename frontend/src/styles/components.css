@@ -152,3 +152,25 @@
 .admin-events pre { max-height:130px; overflow:auto; margin:10px 0 0; padding:10px; border-radius:6px; background:rgba(0,0,0,.2); color:#c9d6e5; font-size:10px; white-space:pre-wrap; overflow-wrap:anywhere; }
 @media(max-width:800px) { .admin-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .admin-dashboard-columns { grid-template-columns:1fr; } }
 @media(max-width:500px) { .admin-metrics { grid-template-columns:1fr; } .admin-workspace .page-heading .secondary { width:100%; } .admin-error { align-items:stretch; flex-direction:column; } .admin-event-top { flex-direction:column; } }
+
+/* Layout desktop: melhor aproveitamento da largura disponível */
+@media (min-width: 1200px) {
+  .site { max-width: 1680px; }
+  .workspace {
+    max-width: none;
+    padding: 56px clamp(28px, 4.2vw, 72px) 88px;
+  }
+  .workspace.narrow { max-width: 980px; margin-left: auto; margin-right: auto; }
+  .projects-workspace .project-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  .projects-workspace .page-heading { margin-top: 12px; }
+  .project-card { min-width: 0; }
+  .project-card h2, .project-card p { overflow-wrap: anywhere; }
+  .project-toolbar { gap: 20px; }
+  .case-detail { width: 100%; }
+  .case-ai-panel, .case-create-panel, .execution-result { padding: 26px; }
+}
+@media (min-width: 1600px) {
+  .site { max-width: 1840px; }
+  .workspace { padding-left: 76px; padding-right: 76px; }
+  .projects-workspace .project-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+}
