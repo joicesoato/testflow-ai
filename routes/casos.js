@@ -19,7 +19,6 @@ const AUTH_URL = process.env.AUTH_SERVICE_URL || "http://auth-service:3001";
 const LOG_URL = process.env.LOG_SERVICE_URL || "http://log-service:3002";
 const INTERNAL_SECRET = process.env.INTERNAL_SERVICE_SECRET;
 const limitarExecucoesFree = createFreeExecutionLimit(pool);
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
 async function autenticar(req, res, next) {
   const authorization = req.get("Authorization");
