@@ -699,6 +699,8 @@ type TestCase = {
 
 function CasesPanel({ token, project, canManage }: { token: string; project: Project; canManage: boolean }) {
   const [cases, setCases] = useState<TestCase[]>([]);
+  const [isPro, setIsPro] = useState(false);
+  const [planLoading, setPlanLoading] = useState(true);
   const [title, setTitle] = useState("");
   const [endpoint, setEndpoint] = useState("/");
   const [method, setMethod] = useState("GET");
@@ -720,6 +722,10 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
 
   useEffect(() => {
     loadCases().catch(err => setError(err.message));
+    apiRequest("/api/billing/status", token)
+      .then(data => setIsPro(data.assinatura?.plano === "pro" && ["active", "trialing"].includes(data.assinatura?.status)))
+      .catch(() => setIsPro(false))
+      .finally(() => setPlanLoading(false));
   }, [project.id, token]);
 
   async function createCase(event: FormEvent) {
@@ -853,7 +859,7 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
         {!project.baseUrl && <small>Cadastre a URL base da API para habilitar a geração.</small>}
       </div>}
 
-      {canManage && <div className="case-create-panel simulation-upsell">
+      {canManage && isPro && <div className="case-create-panel simulation-upsell">
         <h3>Simulação sem URL · TestFlow Pro</h3>
         <p>Valide regras e estruturas de dados localmente. Este modo não chama APIs nem acessa a internet.</p>
         <form className="panel-form" onSubmit={createSimulation}>
@@ -863,6 +869,12 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
           <small>Operadores: equals, not_equals, exists, not_exists, contains, greater_than, less_than, is_true, is_false e is_type.</small>
           <button className="secondary" type="submit" disabled={loading || !simulationTitle.trim()}>{loading ? "Salvando..." : "Criar cenário de simulação"}</button>
         </form>
+      </div>}
+      {canManage && !isPro && !planLoading && <div className="case-create-panel simulation-upsell">
+        <span className="eyebrow">RECURSO PREMIUM</span>
+        <h3>Simulação sem URL</h3>
+        <p>Crie cenários locais com dados JSON e verificações sem realizar chamadas externas. Disponível no TestFlow Pro.</p>
+        <Link className="secondary" to="/billing">Conhecer planos e recursos</Link>
       </div>}
       {canManage && <div className="case-create-panel">
         <h3>Novo caso manual</h3>
