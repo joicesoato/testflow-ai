@@ -1043,13 +1043,88 @@ function ProjectDetails({
 }
 
 function BillingPage({ token }: { token: string }) {
-  const [status, setStatus] = useState<any>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
-  const [message] = useState(new URLSearchParams(window.location.search).get("checkout") === "success" ? "Checkout concluído. A confirmação depende do webhook Stripe." : "");
-  useEffect(() => { apiRequest("/api/billing/status", token).then(data => setStatus(data.assinatura)).catch(err => setError(err.message)).finally(() => setLoading(false)); }, [token]);
-  async function action(path: string) { setLoading(true); setError(""); try { const data = await apiRequest(path, token, { method: "POST" }); if (data.url) window.location.assign(data.url); } catch (err) { setError(err instanceof Error ? err.message : "Falha na cobrança."); } finally { setLoading(false); } }
-  return <main className="workspace narrow"><div className="page-heading"><div><span className="eyebrow">CONTA E PLANO</span><h1>Assinatura</h1><p>Consulte seu plano e gerencie a cobrança.</p></div></div>
-    {error && <div className="form-error">{error}</div>}{message && <div className="form-success">{message}</div>}
-    {loading && !status ? <div className="empty-state">Carregando assinatura...</div> : <section className="case-create-panel"><span className="eyebrow">PLANO ATUAL</span><h2>{status?.plano === "pro" ? "TestFlow Pro" : "Plano gratuito"}</h2><p>Status: {status?.status || "inactive"}</p>{status?.periodo_fim && <p>Período até {new Date(status.periodo_fim).toLocaleDateString("pt-BR")}</p>}{status?.cancelar_no_fim && <p>Cancelamento programado ao fim do período.</p>}{status?.plano === "pro" ? <button className="primary" disabled={loading} onClick={() => action("/api/billing/portal")}>Gerenciar assinatura</button> : <button className="primary" disabled={loading} onClick={() => action("/api/billing/checkout")}>Assinar TestFlow Pro</button>}<small>Checkout depende da configuração de chaves e preço recorrente no servidor.</small></section>}</main>;
+  const [status, setStatus] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [message] = useState(new URLSearchParams(window.location.search).get("checkout") === "success"
+    ? "Checkout concluído. A confirmação do plano depende do webhook Stripe."
+    : "");
+
+  async function loadStatus() {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await apiRequest("/api/billing/status", token);
+      setStatus(data.assinatura);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível consultar sua assinatura.");
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => { loadStatus(); }, [token]);
+
+  async function action(path: string) {
+    setActionLoading(true);
+    setError("");
+    try {
+      const data = await apiRequest(path, token, { method: "POST" });
+      if (data.url) window.location.assign(data.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Falha na cobrança.");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  const isPro = status?.plano === "pro" && ["active", "trialing"].includes(status?.status);
+  return (
+    <main className="workspace billing-workspace">
+      <div className="page-heading">
+        <div><span className="eyebrow">CONTA E PLANO</span><h1>Assinatura</h1>
+          <p>Escolha o plano ideal e acompanhe os recursos disponíveis na sua conta.</p></div>
+      </div>
+      {error && <div className="form-error" role="alert">{error}
+        <button className="text-button" type="button" onClick={loadStatus} disabled={loading}>Tentar novamente</button>
+      </div>}
+      {message && <div className="form-success" role="status">{message}</div>}
+      <section className="billing-current">
+        <div><span className="eyebrow">SEU PLANO ATUAL</span>
+          {loading ? <h2>Consultando assinatura...</h2> : status ? <>
+            <h2>{isPro ? "TestFlow Pro" : "Plano Free"}</h2>
+            <p>Status: {status.status || "inactive"}{status.periodo_fim ? " · Até " + new Date(status.periodo_fim).toLocaleDateString("pt-BR") : ""}</p>
+            {status.cancelar_no_fim && <p>Cancelamento programado ao fim do período.</p>}
+          </> : <h2>Não foi possível confirmar seu plano</h2>}
+        </div>
+        {status && (isPro
+          ? <button className="primary" type="button" disabled={actionLoading} onClick={() => action("/api/billing/portal")}>{actionLoading ? "Abrindo..." : "Gerenciar assinatura"}</button>
+          : <button className="primary" type="button" disabled={actionLoading} onClick={() => action("/api/billing/checkout")}>{actionLoading ? "Preparando..." : "Assinar TestFlow Pro"}</button>)}
+      </section>
+      <div className="billing-plans">
+        <article className="billing-plan">
+          <span className="eyebrow">PARA COMEÇAR</span><h2>Free</h2><p className="plan-price">Grátis</p>
+          <ul>
+            <li>Até 2 projetos</li><li>Cadastro manual de casos HTTP</li>
+            <li>Geração de casos com Groq</li><li>Até 3 execuções por mês</li>
+            <li>Histórico básico de execuções</li>
+          </ul>
+          <span className="plan-note">Simulação sem URL não incluída.</span>
+        </article>
+        <article className="billing-plan billing-plan-pro">
+          <span className="eyebrow">RECURSOS COMPLETOS</span><h2>TestFlow Pro</h2>
+          <p className="plan-price">Assinatura mensal</p>
+          <ul>
+            <li>Projetos ilimitados</li><li>Casos de teste HTTP e geração com Groq</li>
+            <li>Execuções sem limite mensal</li><li>Simulação local sem URL</li>
+            <li>Histórico e gerenciamento da assinatura</li>
+          </ul>
+          <span className="plan-note">Preço exibido no Checkout Stripe antes da confirmação.</span>
+        </article>
+      </div>
+      <p className="billing-footnote">A disponibilidade do checkout depende da configuração das credenciais de teste ou produção, do preço recorrente e do webhook Stripe no servidor.</p>
+    </main>
+  );
 }
 
 function AdminDashboard({ token }: { token: string }) {
