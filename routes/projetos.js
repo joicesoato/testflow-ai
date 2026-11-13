@@ -152,6 +152,23 @@ router.post("/", exigirPermissao("projects:create"), async (req, res) => {
   const { nome, descricao, url_base, ambiente } = validacao.campos;
 
   try {
+    const [assinaturas] = await pool.execute(
+      "SELECT plano, status FROM assinaturas WHERE usuario_id = ? LIMIT 1",
+      [req.usuario.id]
+    );
+    const assinatura = assinaturas[0];
+    const isPro = assinatura?.plano === "pro" && ["active", "trialing"].includes(assinatura.status);
+    if (!isPro) {
+      const [contagem] = await pool.execute(
+        "SELECT COUNT(*) AS total FROM projetos WHERE usuario_id = ?",
+        [req.usuario.id]
+      );
+      if (Number(contagem[0]?.total || 0) >= 2) {
+        return res.status(403).json({
+          erro: "O plano Free permite até 2 projetos. Assine o TestFlow Pro para criar projetos ilimitados."
+        });
+      }
+    }
     const [resultado] = await pool.execute(
       `INSERT INTO projetos (usuario_id, nome, descricao, url_base, ambiente)
        VALUES (?, ?, ?, ?, ?)`,

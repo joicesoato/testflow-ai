@@ -41,6 +41,27 @@ async function autenticar(req, res, next) {
 }
 function unixDate(value) { return value ? new Date(value * 1000) : null; }
 
+function getAppUrl() {
+  const appUrl = String(process.env.APP_URL || "").replace(/\/+$/, "");
+  let parsed;
+  try { parsed = new URL(appUrl); } catch {
+    const error = new Error("Configure APP_URL com o endereço completo da aplicação.");
+    error.status = 503;
+    throw error;
+  }
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    const error = new Error("APP_URL precisa usar HTTP ou HTTPS.");
+    error.status = 503;
+    throw error;
+  }
+  if (process.env.NODE_ENV === "production" && parsed.protocol !== "https:") {
+    const error = new Error("APP_URL HTTPS precisa estar configurada em produção.");
+    error.status = 503;
+    throw error;
+  }
+  return appUrl;
+}
+
 async function salvarAssinatura(subscription, customerId, userIdHint, executor = pool) {
   let userId = Number(subscription.metadata?.userId || userIdHint);
   if (!Number.isInteger(userId) || userId <= 0) {
@@ -147,6 +168,7 @@ router.post("/checkout", async (req, res) => {
   try {
     const priceId = process.env.STRIPE_PRICE_ID;
     if (!priceId) return res.status(503).json({ erro: "Configure STRIPE_PRICE_ID no servidor." });
+    const appUrl = getAppUrl();
     const [rows] = await pool.execute("SELECT stripe_customer_id, status FROM assinaturas WHERE usuario_id=?", [req.usuario.id]);
     if (rows[0] && ["active", "trialing"].includes(rows[0].status)) return res.status(409).json({ erro: "Sua assinatura já está ativa. Gerencie-a pelo portal." });
     let customerId = rows[0]?.stripe_customer_id;
@@ -155,8 +177,6 @@ router.post("/checkout", async (req, res) => {
       customerId = customer.id;
       await pool.execute("INSERT INTO assinaturas (usuario_id, stripe_customer_id, plano, status) VALUES (?, ?, 'free', 'inactive') ON DUPLICATE KEY UPDATE stripe_customer_id=VALUES(stripe_customer_id)", [req.usuario.id, customerId]);
     }
-    const appUrl = String(process.env.APP_URL || "").replace(/\/$/, "");
-    if (process.env.NODE_ENV === "production" && !appUrl.startsWith("https://")) return res.status(503).json({ erro: "APP_URL HTTPS precisa estar configurada." });
     const session = await stripeData("checkout/sessions", { method: "POST", body: formEncode({
       mode: "subscription", customer: customerId, "line_items[0][price]": priceId, "line_items[0][quantity]": 1,
       success_url: appUrl + "/billing?checkout=success", cancel_url: appUrl + "/billing?checkout=cancel",
@@ -170,7 +190,7 @@ router.post("/portal", async (req, res) => {
   try {
     const [rows] = await pool.execute("SELECT stripe_customer_id FROM assinaturas WHERE usuario_id=?", [req.usuario.id]);
     if (!rows[0]?.stripe_customer_id) return res.status(404).json({ erro: "Nenhum cadastro de cobrança encontrado." });
-    const appUrl = String(process.env.APP_URL || "").replace(/\/$/, "");
+    const appUrl = getAppUrl();
     const session = await stripeData("billing_portal/sessions", { method: "POST", body: formEncode({ customer: rows[0].stripe_customer_id, return_url: appUrl + "/billing" }) });
     res.json({ url: session.url });
   } catch (error) { console.error("Erro ao abrir portal Stripe:", error.message); res.status(error.status || 500).json({ erro: error.status ? error.message : "Não foi possível abrir o portal." }); }

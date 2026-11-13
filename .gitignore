@@ -9,3 +9,6 @@ frontend/dist/
 !.env.example
 coverage/
 *.log
+
+# Backups locais do banco de dados
+backup-testflow-*.sql
