@@ -6,7 +6,8 @@ import {
   Route,
   Routes,
   useNavigate,
-  useParams
+  useParams,
+  useSearchParams
 } from "react-router-dom";
 
 type User = {
@@ -83,6 +84,21 @@ async function apiRequest(
     }
   });
 
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.erro || "Não foi possível concluir a operação.");
+  }
+
+  return data;
+}
+
+async function publicApiRequest(path: string, body: Record<string, string>) {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
@@ -373,12 +389,15 @@ function AuthPage({
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
   const [mensagem, setMensagem] = useState("");
+  const [mostrarReenvio, setMostrarReenvio] = useState(false);
+  const [reenviando, setReenviando] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setErro("");
     setMensagem("");
+    setMostrarReenvio(false);
     setLoading(true);
 
     try {
@@ -396,6 +415,7 @@ function AuthPage({
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
+        setMostrarReenvio(response.status === 403 && data.codigo === "EMAIL_NOT_VERIFIED");
         throw new Error(data.erro || "Não foi possível realizar a operação.");
       }
 
@@ -413,6 +433,21 @@ function AuthPage({
       setErro(error instanceof Error ? error.message : "Erro inesperado.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function resendVerification() {
+    setErro("");
+    setMensagem("");
+    setReenviando(true);
+    try {
+      const data = await publicApiRequest("/api/auth/resend-verification", { email });
+      setMensagem(data.mensagem || "Se sua conta estiver aguardando confirmação, enviaremos um novo link.");
+      setMostrarReenvio(false);
+    } catch (error) {
+      setErro(error instanceof Error ? error.message : "Não foi possível solicitar um novo link.");
+    } finally {
+      setReenviando(false);
     }
   }
 
@@ -468,8 +503,25 @@ function AuthPage({
             />
           </label>
 
+          {!registering && (
+            <Link className="auth-forgot-password" to="/forgot-password">
+              Esqueceu sua senha?
+            </Link>
+          )}
+
           {erro && <div className="form-error">{erro}</div>}
           {mensagem && <div className="form-success">{mensagem}</div>}
+
+          {mostrarReenvio && (
+            <button
+              className="secondary"
+              type="button"
+              onClick={resendVerification}
+              disabled={reenviando || !email}
+            >
+              {reenviando ? "Enviando..." : "Reenviar e-mail de confirmação"}
+            </button>
+          )}
 
           <button className="primary" type="submit" disabled={loading}>
             {loading
@@ -485,6 +537,162 @@ function AuthPage({
             <>Já tem uma conta? <Link to="/login">Entrar</Link></>
           ) : (
             <>Ainda não tem conta? <Link to="/register">Cadastre-se</Link></>
+          )}
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function ForgotPasswordPage() {
+  const [email, setEmail] = useState("");
+  const [erro, setErro] = useState("");
+  const [mensagem, setMensagem] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setErro("");
+    setMensagem("");
+    setLoading(true);
+
+    try {
+      const data = await publicApiRequest("/api/auth/forgot-password", { email });
+      setMensagem(data.mensagem || "Se o e-mail estiver cadastrado, um link será enviado.");
+    } catch (error) {
+      setErro(error instanceof Error ? error.message : "Não foi possível solicitar a recuperação.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="workspace auth-workspace">
+      <section className="auth-card">
+        <Brand />
+        <h1>Recuperar senha</h1>
+        <p>Informe o e-mail da sua conta para receber um link de redefinição.</p>
+
+        <form className="panel-form" onSubmit={submit}>
+          <label>
+            E-mail
+            <input
+              type="email"
+              value={email}
+              onChange={event => setEmail(event.target.value)}
+              maxLength={150}
+              required
+              autoComplete="email"
+              placeholder="seu@email.com"
+            />
+          </label>
+
+          {erro && <div className="form-error">{erro}</div>}
+          {mensagem && <div className="form-success">{mensagem}</div>}
+
+          <button className="primary" type="submit" disabled={loading}>
+            {loading ? "Enviando..." : "Enviar link de recuperação"}
+          </button>
+        </form>
+
+        <div className="auth-switch">
+          <Link to="/login">Voltar para entrar</Link>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function ResetPasswordPage() {
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token") || "";
+  const [senha, setSenha] = useState("");
+  const [confirmacao, setConfirmacao] = useState("");
+  const [erro, setErro] = useState("");
+  const [mensagem, setMensagem] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setErro("");
+    setMensagem("");
+
+    if (senha !== confirmacao) {
+      setErro("As senhas não coincidem.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const data = await publicApiRequest("/api/auth/reset-password", {
+        token,
+        novaSenha: senha
+      });
+      setMensagem(data.mensagem || "Senha alterada com sucesso.");
+      setSenha("");
+      setConfirmacao("");
+    } catch (error) {
+      setErro(error instanceof Error ? error.message : "Não foi possível redefinir a senha.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="workspace auth-workspace">
+      <section className="auth-card">
+        <Brand />
+        <h1>Redefinir senha</h1>
+        <p>Escolha uma nova senha para acessar sua conta.</p>
+
+        {!token ? (
+          <div className="form-error">
+            Link inválido ou incompleto. Solicite uma nova recuperação de senha.
+          </div>
+        ) : (
+          <form className="panel-form" onSubmit={submit}>
+            <label>
+              Nova senha
+              <input
+                type="password"
+                value={senha}
+                onChange={event => setSenha(event.target.value)}
+                minLength={6}
+                maxLength={128}
+                required
+                autoComplete="new-password"
+                placeholder="Mínimo de 6 caracteres"
+              />
+            </label>
+
+            <label>
+              Confirmar nova senha
+              <input
+                type="password"
+                value={confirmacao}
+                onChange={event => setConfirmacao(event.target.value)}
+                minLength={6}
+                maxLength={128}
+                required
+                autoComplete="new-password"
+                placeholder="Digite a senha novamente"
+              />
+            </label>
+
+            {erro && <div className="form-error">{erro}</div>}
+            {mensagem && <div className="form-success">{mensagem}</div>}
+
+            <button className="primary" type="submit" disabled={loading}>
+              {loading ? "Salvando..." : "Salvar nova senha"}
+            </button>
+          </form>
+        )}
+
+        <div className="auth-switch">
+          {mensagem ? (
+            <Link to="/login">Ir para entrar</Link>
+          ) : (
+            <Link to="/forgot-password">Solicitar outro link</Link>
           )}
         </div>
       </section>
@@ -1038,14 +1246,29 @@ function ProjectDetails({
         )}
       </div>
 
-      <section className="detail-stats">
-        <div>
-          <span>Ambiente</span>
-          <strong>{project.environment}</strong>
+      <section className="detail-stats" aria-label="Configurações do projeto">
+        <div className={`detail-stat-card detail-stat-environment environment-${project.environment}`}>
+          <span className="detail-stat-label">
+            <span className="detail-stat-icon" aria-hidden="true">◉</span>
+            Ambiente
+          </span>
+          <strong>
+            {project.environment === "producao" ? "Produção" :
+              project.environment === "homologacao" ? "Homologação" : "Desenvolvimento"}
+          </strong>
+          <small>Ambiente configurado para este projeto</small>
         </div>
-        <div>
-          <span>URL base</span>
-          <strong>{project.baseUrl || "Não informada"}</strong>
+        <div className="detail-stat-card detail-stat-url">
+          <span className="detail-stat-label">
+            <span className="detail-stat-icon" aria-hidden="true">↗</span>
+            URL base
+          </span>
+          <strong title={project.baseUrl || undefined}>
+            {project.baseUrl || "Não informada"}
+          </strong>
+          <small>
+            {project.baseUrl ? "Endereço principal da API" : "Edite o projeto para configurar a URL."}
+          </small>
         </div>
       </section>
 
@@ -1373,6 +1596,9 @@ export default function App() {
               : <AuthPage mode="register" onLogin={login} />
           }
         />
+
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         <Route
           path="/projects"

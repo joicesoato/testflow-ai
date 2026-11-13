@@ -36,8 +36,8 @@ async function encaminhar(req, res, caminho, metodo = "POST") {
     res.status(resposta.status);
     res.set("Content-Type", tipo);
     return res.send(conteudo);
-  } catch (erro) {
-    console.error("Falha ao acessar serviço de autenticação:", erro.message);
+  } catch {
+    console.error("Falha ao acessar serviço de autenticação.");
 
     return res.status(503).json({
       erro: "Serviço de autenticação indisponível. Tente novamente."
@@ -49,8 +49,20 @@ router.post("/register", (req, res) =>
   encaminhar(req, res, "/register")
 );
 
+router.post("/resend-verification", (req, res) =>
+  encaminhar(req, res, "/resend-verification")
+);
+
 router.post("/login", (req, res) =>
   encaminhar(req, res, "/login")
+);
+
+router.post("/forgot-password", (req, res) =>
+  encaminhar(req, res, "/forgot-password")
+);
+
+router.post("/reset-password", (req, res) =>
+  encaminhar(req, res, "/reset-password")
 );
 
 router.get("/verify-email", (req, res) =>
@@ -79,8 +91,8 @@ router.get("/me", async (req, res) => {
       });
     }
     return res.json({ usuario: data.usuario, permissoes: data.permissoes || [] });
-  } catch (error) {
-    console.error("Falha ao atualizar sessão:", error.message);
+  } catch {
+    console.error("Falha ao atualizar sessão.");
     return res.status(503).json({ erro: "Serviço de autenticação indisponível." });
   }
 });

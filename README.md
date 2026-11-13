@@ -86,6 +86,15 @@ docker compose exec -T db sh -c 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD"
 docker compose exec -T db sh -c 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"' < database/migration-v9-saas.sql
 ```
 
+Antes de atualizar o `auth-service`, aplique uma vez a migração v10. Ela converte os tokens de confirmação ainda armazenados em texto puro para SHA-256, preservando a validade dos links e sem remover contas ou dados:
+
+```bash
+docker compose stop auth-service
+docker compose exec -T db sh -c 'mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"' < database/migration-v10-auth-token-hash.sql
+```
+
+Não reaplique a v10: a transformação é intencionalmente executada uma única vez.
+
 Para liberar o painel administrativo na conta de teste autorizada, execute também o script separado, somente no ambiente de desenvolvimento/teste:
 
 ```bash
