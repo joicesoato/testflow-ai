@@ -1039,13 +1039,152 @@ function ProjectDetails({
 }
 
 function BillingPage({ token }: { token: string }) {
-  const [status, setStatus] = useState<any>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
-  const [message] = useState(new URLSearchParams(window.location.search).get("checkout") === "success" ? "Checkout concluído. A confirmação depende do webhook Stripe." : "");
-  useEffect(() => { apiRequest("/api/billing/status", token).then(data => setStatus(data.assinatura)).catch(err => setError(err.message)).finally(() => setLoading(false)); }, [token]);
-  async function action(path: string) { setLoading(true); setError(""); try { const data = await apiRequest(path, token, { method: "POST" }); if (data.url) window.location.assign(data.url); } catch (err) { setError(err instanceof Error ? err.message : "Falha na cobrança."); } finally { setLoading(false); } }
-  return <main className="workspace narrow"><div className="page-heading"><div><span className="eyebrow">CONTA E PLANO</span><h1>Assinatura</h1><p>Consulte seu plano e gerencie a cobrança.</p></div></div>
-    {error && <div className="form-error">{error}</div>}{message && <div className="form-success">{message}</div>}
-    {loading && !status ? <div className="empty-state">Carregando assinatura...</div> : <section className="case-create-panel"><span className="eyebrow">PLANO ATUAL</span><h2>{status?.plano === "pro" ? "TestFlow Pro" : "Plano gratuito"}</h2><p>Status: {status?.status || "inactive"}</p>{status?.periodo_fim && <p>Período até {new Date(status.periodo_fim).toLocaleDateString("pt-BR")}</p>}{status?.cancelar_no_fim && <p>Cancelamento programado ao fim do período.</p>}{status?.plano === "pro" ? <button className="primary" disabled={loading} onClick={() => action("/api/billing/portal")}>Gerenciar assinatura</button> : <button className="primary" disabled={loading} onClick={() => action("/api/billing/checkout")}>Assinar TestFlow Pro</button>}<small>Checkout depende da configuração de chaves e preço recorrente no servidor.</small></section>}</main>;
+  const checkoutSuccess = new URLSearchParams(window.location.search).get("checkout") === "success";
+  const checkoutCanceled = new URLSearchParams(window.location.search).get("checkout") === "cancel";
+  const [status, setStatus] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [checking, setChecking] = useState(checkoutSuccess);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    async function loadStatus() {
+      try {
+        const data = await apiRequest("/api/billing/status", token);
+        if (!active) return;
+        const subscription = data.assinatura;
+        setStatus(subscription);
+        setError("");
+        setLoading(false);
+
+        if (checkoutSuccess && subscription?.plano !== "pro" && attempts < 20) {
+          attempts += 1;
+          timer = setTimeout(loadStatus, 2500);
+        } else {
+          setChecking(false);
+        }
+      } catch (err) {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : "Não foi possível consultar a assinatura.");
+        setLoading(false);
+        setChecking(false);
+      }
+    }
+
+    loadStatus();
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [token, checkoutSuccess]);
+
+  async function refreshStatus() {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await apiRequest("/api/billing/status", token);
+      setStatus(data.assinatura);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível consultar a assinatura.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function action(path: string) {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await apiRequest(path, token, { method: "POST" });
+      if (data.url) window.location.assign(data.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Falha na cobrança.");
+      setLoading(false);
+    }
+  }
+
+  const isPro = status?.plano === "pro" && ["active", "trialing"].includes(status?.status);
+  const date = status?.periodo_fim
+    ? new Date(status.periodo_fim).toLocaleDateString("pt-BR")
+    : null;
+
+  return (
+    <main className="workspace narrow billing-workspace">
+      <div className="page-heading">
+        <div>
+          <span className="eyebrow">CONTA E PLANO</span>
+          <h1>Assinatura</h1>
+          <p>Gerencie seu plano e acompanhe os benefícios da sua conta.</p>
+        </div>
+      </div>
+
+      {error && <div className="form-error" role="alert">{error}</div>}
+
+      {loading && !status ? (
+        <div className="empty-state">Consultando sua assinatura...</div>
+      ) : isPro ? (
+        <section className="billing-success-panel">
+          <div className="billing-success-icon" aria-hidden="true">✓</div>
+          <span className="eyebrow">ASSINATURA ATIVA</span>
+          <h2>Boas-vindas ao TestFlow Pro!</h2>
+          <p>Seu pagamento foi confirmado e os recursos do plano Pro estão liberados na sua conta.</p>
+          <div className="billing-plan-summary">
+            <div><span>PLANO</span><strong>TestFlow Pro</strong></div>
+            <span className="billing-active-tag">ATIVO</span>
+          </div>
+          {date && <p className="billing-period">Próxima renovação ou término do período: <strong>{date}</strong></p>}
+          {status?.cancelar_no_fim && <p className="billing-period">O cancelamento está programado para o fim do período atual.</p>}
+          <ul className="billing-benefits">
+            <li>Projetos ilimitados</li>
+            <li>Execuções de testes sem limite mensal</li>
+            <li>Simulações de testes sem URL</li>
+            <li>Geração de casos de teste com IA</li>
+          </ul>
+          <div className="billing-actions">
+            <Link className="primary" to="/projects">Ir para meus projetos <span>→</span></Link>
+            <button className="secondary" type="button" disabled={loading} onClick={() => action("/api/billing/portal")}>Gerenciar assinatura</button>
+          </div>
+        </section>
+      ) : checking ? (
+        <section className="billing-pending-panel" role="status">
+          <div className="billing-pending-icon" aria-hidden="true">↻</div>
+          <span className="eyebrow">PAGAMENTO RECEBIDO</span>
+          <h2>Estamos confirmando sua assinatura</h2>
+          <p>O Stripe já concluiu o Checkout. Estamos aguardando a confirmação segura do webhook para liberar seu plano Pro.</p>
+          <div className="billing-progress"><span /></div>
+          <small>Esta etapa pode levar alguns instantes. Não é necessário realizar outro pagamento.</small>
+        </section>
+      ) : (
+        <>
+          {checkoutCanceled && <div className="billing-cancel-notice">O Checkout foi cancelado. Nenhuma nova assinatura foi ativada.</div>}
+          {checkoutSuccess && <div className="billing-pending-panel compact" role="status">
+            <span className="eyebrow">CONFIRMAÇÃO PENDENTE</span>
+            <h2>Ainda estamos aguardando o Stripe</h2>
+            <p>Seu retorno do Checkout foi recebido, mas a assinatura ainda não consta como ativa. Você pode verificar novamente em instantes.</p>
+            <button className="secondary" type="button" disabled={loading} onClick={refreshStatus}>Verificar assinatura novamente</button>
+          </div>}
+          <section className="billing-free-panel">
+            <div className="billing-free-heading">
+              <div><span className="eyebrow">SEU PLANO ATUAL</span><h2>Plano gratuito</h2></div>
+              <span className="billing-free-tag">FREE</span>
+            </div>
+            <p>Continue organizando seus projetos e executando testes com os limites do plano gratuito.</p>
+            <ul className="billing-benefits">
+              <li>Até 2 projetos</li>
+              <li>Até 3 execuções por mês</li>
+            </ul>
+            <div className="billing-actions">
+              <button className="primary" type="button" disabled={loading} onClick={() => action("/api/billing/checkout")}>Conhecer o TestFlow Pro <span>→</span></button>
+              <Link className="secondary" to="/projects">Voltar aos projetos</Link>
+            </div>
+          </section>
+        </>
+      )}
+    </main>
+  );
 }
 
 function AdminDashboard({ token }: { token: string }) {
