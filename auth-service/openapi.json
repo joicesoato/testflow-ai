@@ -28,14 +28,50 @@
           "201": {
             "description": "Criado"
           },
+          "200": {
+            "description": "Cadastro pendente encontrado; nova confirmação enviada"
+          },
           "400": {
             "description": "Dados inválidos"
           },
           "409": {
-            "description": "E-mail já cadastrado"
+            "description": "Conta já confirmada"
           },
-          "500": {
+          "503": {
             "description": "Falha no envio"
+          }
+        }
+      }
+    },
+    "/resend-verification": {
+      "post": {
+        "summary": "Solicitar novo e-mail de confirmação",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Solicitação processada sem revelar o estado da conta"
+          },
+          "400": {
+            "description": "E-mail inválido"
+          },
+          "429": {
+            "description": "Limite de tentativas excedido"
           }
         }
       }
@@ -173,7 +209,13 @@
         },
         "responses": {
           "200": {
-            "description": "Processado"
+            "description": "Solicitação processada sem revelar se a conta existe"
+          },
+          "400": {
+            "description": "E-mail inválido"
+          },
+          "429": {
+            "description": "Limite de tentativas excedido"
           }
         }
       }

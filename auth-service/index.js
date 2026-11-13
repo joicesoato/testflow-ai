@@ -78,6 +78,43 @@ function escapeHtml(value) {
   })[char]);
 }
 
+function hashToken(token) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+async function sendVerificationEmail(usuario) {
+  const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = hashToken(token);
+  const [result] = await pool.execute(
+    `UPDATE usuarios
+     SET token_verificacao = ?,
+         verificacao_expira_em = DATE_ADD(NOW(), INTERVAL 30 MINUTE)
+     WHERE id = ? AND email_verificado = FALSE`,
+    [tokenHash, usuario.id]
+  );
+
+  if (!result.affectedRows) return false;
+
+  const appUrl = process.env.APP_URL || "http://localhost:3000";
+  const link = `${appUrl}/api/auth/verify-email?token=${encodeURIComponent(token)}`;
+  const nomeHtml = escapeHtml(usuario.nome);
+
+  await transporter.sendMail({
+    from: process.env.MAIL_FROM,
+    to: usuario.email,
+    subject: "Confirme seu cadastro - TestFlow AI",
+    html: `
+      <h2>Confirme seu e-mail</h2>
+      <p>Olá, ${nomeHtml}!</p>
+      <p>Para ativar sua conta no <strong>TestFlow AI</strong>, use o link abaixo:</p>
+      <p><a href="${link}">Confirmar meu e-mail</a></p>
+      <p>Este link é válido por <strong>30 minutos</strong> e só pode ser usado uma vez.</p>
+      <p>Se você não solicitou esta confirmação, ignore este e-mail.</p>
+    `
+  });
+  return true;
+}
+
 const path = require("path");
 
 const swaggerHtml = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Auth Service — Swagger UI</title><link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css"></head><body><div id="swagger-ui"></div><script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script><script>window.onload=()=>SwaggerUIBundle({url:"/openapi.json",dom_id:"#swagger-ui",deepLinking:true,presets:[SwaggerUIBundle.presets.apis,SwaggerUIBundle.SwaggerUIStandalonePreset],layout:"BaseLayout"});</script></body></html>`;
@@ -98,11 +135,13 @@ const transporter = nodemailer.createTransport({
 // CADASTRO
 app.post("/register", sensitiveLimiter, async (req, res) => {
   try {
-    const nome = req.body.nome?.trim();
-    const email = req.body.email?.trim().toLowerCase();
+    const nome = typeof req.body.nome === "string" ? req.body.nome.trim() : "";
+    const email = typeof req.body.email === "string"
+      ? req.body.email.trim().toLowerCase()
+      : "";
     const senha = req.body.senha;
 
-    if (!nome || !email || !senha || nome.length > 100 || email.length > 150) {
+    if (!nome || !email || typeof senha !== "string" || nome.length > 100 || email.length > 150) {
       return res.status(400).json({
         erro: "Nome, e-mail e senha são obrigatórios."
       });
@@ -112,86 +151,50 @@ app.post("/register", sensitiveLimiter, async (req, res) => {
       return res.status(400).json({ erro: "Informe um e-mail válido." });
     }
 
-    if (senha.length < 6) {
+    if (senha.length < 6 || senha.length > 128) {
       return res.status(400).json({
-        erro: "A senha deve ter pelo menos 6 caracteres."
+        erro: "A senha deve ter entre 6 e 128 caracteres."
       });
     }
 
     const [existentes] = await pool.execute(
-      "SELECT id FROM usuarios WHERE email = ?",
+      "SELECT id, nome, email, email_verificado FROM usuarios WHERE email = ?",
       [email]
     );
 
     if (existentes.length > 0) {
+      const usuarioExistente = existentes[0];
+      if (!usuarioExistente.email_verificado) {
+        await sendVerificationEmail(usuarioExistente);
+        return res.json({
+          mensagem: "Já existe um cadastro aguardando confirmação. Enviamos um novo link para seu e-mail."
+        });
+      }
+
       return res.status(409).json({
-        erro: "Este e-mail já está cadastrado."
+        erro: "Esta conta já está confirmada. Entre ou recupere sua senha.",
+        codigo: "ACCOUNT_ALREADY_CONFIRMED"
       });
     }
 
     const senhaHash = await bcrypt.hash(senha, 12);
-    const nomeHtml = escapeHtml(nome);
-
     const exigirVerificacao = process.env.EMAIL_VERIFICATION_REQUIRED !== "false";
-    const tokenVerificacao = exigirVerificacao ? crypto.randomBytes(32).toString("hex") : null;
 
     const [resultado] = await pool.execute(
       `INSERT INTO usuarios
        (nome, email, senha_hash, role, email_verificado, token_verificacao, verificacao_expira_em)
-       VALUES (?, ?, ?, 'analista', ?, ?, ${exigirVerificacao ? "DATE_ADD(NOW(), INTERVAL 30 MINUTE)" : "NULL"})`,
-      [nome, email, senhaHash, exigirVerificacao ? false : true, tokenVerificacao]
+       VALUES (?, ?, ?, 'analista', ?, NULL, NULL)`,
+      [nome, email, senhaHash, exigirVerificacao ? false : true]
     );
 
     if (exigirVerificacao) {
-      const appUrl = process.env.APP_URL || "http://localhost:3000";
-      const linkVerificacao =
-        `${appUrl}/api/auth/verify-email?token=${tokenVerificacao}`;
-
       try {
-        await transporter.sendMail({
-        from: process.env.MAIL_FROM,
-        to: email,
-        subject: "Confirme seu cadastro - TestFlow AI",
-        html: `
-          <h2>Confirme seu e-mail</h2>
-
-          <p>Olá, ${nomeHtml}!</p>
-
-          <p>
-            Seu cadastro no <strong>TestFlow AI</strong> foi realizado.
-          </p>
-
-          <p>
-            Para ativar sua conta, clique no botão abaixo:
-          </p>
-
-          <p>
-            <a href="${linkVerificacao}"
-               style="
-                 display:inline-block;
-                 padding:12px 20px;
-                 background:#000;
-                 color:#fff;
-                 text-decoration:none;
-                 border-radius:6px;
-               ">
-              Confirmar meu e-mail
-            </a>
-          </p>
-
-          <p>
-            Este link é válido por <strong>30 minutos</strong>.
-          </p>
-
-          <p>
-            Se você não realizou este cadastro, ignore este e-mail.
-          </p>
-        `
+        await sendVerificationEmail({ id: resultado.insertId, nome, email });
+      } catch {
+        console.error("Falha ao enviar e-mail de confirmação.");
+        return res.status(503).json({
+          erro: "A conta foi criada, mas não foi possível enviar a confirmação. Solicite um novo link."
         });
-      } catch (erroEmail) {
-        console.error("Erro ao enviar confirmação:", erroEmail);
-        await pool.execute("DELETE FROM usuarios WHERE id = ?", [resultado.insertId]);
-        return res.status(500).json({ erro: "Não foi possível enviar o e-mail de confirmação." });
       }
     }
 
@@ -207,8 +210,8 @@ app.post("/register", sensitiveLimiter, async (req, res) => {
       }
     });
 
-  } catch (erro) {
-    console.error("Erro no cadastro:", erro);
+  } catch {
+    console.error("Erro no cadastro.");
 
     res.status(503).json({
       erro: "Erro interno ao realizar cadastro."
@@ -216,22 +219,54 @@ app.post("/register", sensitiveLimiter, async (req, res) => {
   }
 });
 
+// REENVIAR CONFIRMAÇÃO
+app.post("/resend-verification", sensitiveLimiter, async (req, res) => {
+  const mensagem = "Se houver uma conta aguardando confirmação para este e-mail, enviaremos um novo link.";
+
+  try {
+    const email = typeof req.body.email === "string"
+      ? req.body.email.trim().toLowerCase()
+      : "";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 150) {
+      return res.status(400).json({ erro: "Informe um e-mail válido." });
+    }
+
+    const [usuarios] = await pool.execute(
+      `SELECT id, nome, email
+       FROM usuarios
+       WHERE email = ? AND email_verificado = FALSE`,
+      [email]
+    );
+
+    if (usuarios.length > 0) {
+      await sendVerificationEmail(usuarios[0]);
+    }
+
+    return res.json({ mensagem });
+  } catch {
+    console.error("Falha ao processar reenvio de confirmação.");
+    return res.status(503).json({
+      erro: "Não foi possível processar a solicitação. Tente novamente mais tarde."
+    });
+  }
+});
+
 // CONFIRMAR E-MAIL
-app.get("/verify-email", async (req, res) => {
+app.get("/verify-email", sensitiveLimiter, async (req, res) => {
   try {
     const token = req.query.token;
 
-    if (!token) {
+    if (typeof token !== "string" || !/^[a-f\d]{64}$/i.test(token)) {
       return res.status(400).send("Token de verificação não informado.");
     }
 
     const [usuarios] = await pool.execute(
       `SELECT id
        FROM usuarios
-       WHERE token_verificacao = ?
+       WHERE token_verificacao IN (?, ?)
        AND email_verificado = FALSE
        AND verificacao_expira_em > NOW()`,
-      [token]
+      [hashToken(token), token]
     );
 
     if (usuarios.length === 0) {
@@ -241,21 +276,28 @@ app.get("/verify-email", async (req, res) => {
       `);
     }
 
-    await pool.execute(
+    const [result] = await pool.execute(
       `UPDATE usuarios
        SET email_verificado = TRUE,
            token_verificacao = NULL,
            verificacao_expira_em = NULL
-       WHERE id = ?`,
-      [usuarios[0].id]
+       WHERE id = ?
+       AND email_verificado = FALSE
+       AND token_verificacao IN (?, ?)
+       AND verificacao_expira_em > NOW()`,
+      [usuarios[0].id, hashToken(token), token]
     );
+
+    if (!result.affectedRows) {
+      return res.status(400).send("Link inválido, expirado ou já utilizado.");
+    }
 
     res.json({
       mensagem: "E-mail confirmado com sucesso."
     });
 
-  } catch (erro) {
-    console.error("Erro na confirmação:", erro);
+  } catch {
+    console.error("Erro ao confirmar e-mail.");
 
     res.status(503).send(
       "Erro interno ao confirmar o e-mail."
@@ -296,7 +338,8 @@ app.post("/login", sensitiveLimiter, async (req, res) => {
 
     if (!usuario.email_verificado) {
       return res.status(403).json({
-        erro: "E-mail ainda não confirmado. Verifique sua caixa de entrada."
+        erro: "E-mail ainda não confirmado. Verifique sua caixa de entrada ou solicite um novo link.",
+        codigo: "EMAIL_NOT_VERIFIED"
       });
     }
 
@@ -321,8 +364,8 @@ app.post("/login", sensitiveLimiter, async (req, res) => {
         role: usuario.role
       }
     });
-  } catch (erro) {
-    console.error("Erro no login:", erro);
+  } catch {
+    console.error("Erro no login.");
     res.status(500).json({ erro: "Erro interno no login." });
   }
 });
@@ -357,7 +400,7 @@ app.get("/authorize", async (req, res) => {
       usuario,
       permissoes
     });
-  } catch (erro) {
+  } catch {
     res.status(401).json({ erro: "Token inválido ou expirado." });
   }
 });
@@ -380,7 +423,7 @@ app.get("/me", async (req, res) => {
       autenticado: true,
       usuario: dados
     });
-  } catch (erro) {
+  } catch {
     res.status(401).json({
       erro: "Token inválido ou expirado."
     });
@@ -390,11 +433,13 @@ app.get("/me", async (req, res) => {
 // ESQUECI A SENHA
 app.post("/forgot-password", sensitiveLimiter, async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = typeof req.body.email === "string"
+      ? req.body.email.trim().toLowerCase()
+      : "";
 
-    if (!email) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 150) {
       return res.status(400).json({
-        erro: "Informe o e-mail."
+        erro: "Informe um e-mail válido."
       });
     }
 
@@ -414,8 +459,12 @@ app.post("/forgot-password", sensitiveLimiter, async (req, res) => {
     const nomeHtml = escapeHtml(usuario.nome);
 
     const token = crypto.randomBytes(32).toString("hex");
-    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const tokenHash = hashToken(token);
 
+    await pool.execute(
+      "UPDATE reset_tokens SET usado = TRUE WHERE usuario_id = ? AND usado = FALSE",
+      [usuario.id]
+    );
     await pool.execute(
       `INSERT INTO reset_tokens
       (token, usuario_id, criado_em, expira_em, usado)
@@ -424,7 +473,7 @@ app.post("/forgot-password", sensitiveLimiter, async (req, res) => {
     );
 
     const appUrl = process.env.APP_URL || "http://localhost:3000";
-    const link = `${appUrl}/reset?token=${encodeURIComponent(token)}`;
+    const link = `${appUrl}/reset-password?token=${encodeURIComponent(token)}`;
 
     await transporter.sendMail({
       from: process.env.MAIL_FROM,
@@ -445,8 +494,8 @@ app.post("/forgot-password", sensitiveLimiter, async (req, res) => {
     res.json({
       mensagem: "Se o e-mail estiver cadastrado, um link será enviado."
     });
-  } catch (erro) {
-    console.error("Erro na recuperação:", erro);
+  } catch {
+    console.error("Erro na recuperação de senha.");
     res.status(500).json({
       erro: "Erro ao enviar e-mail de recuperação."
     });
@@ -455,10 +504,12 @@ app.post("/forgot-password", sensitiveLimiter, async (req, res) => {
 
 // REDEFINIR SENHA
 app.post("/reset-password", sensitiveLimiter, async (req, res) => {
+  let connection;
   try {
     const { token, novaSenha } = req.body;
 
-    if (!token || !novaSenha) {
+    if (typeof token !== "string" || !/^[a-f\d]{64}$/i.test(token) ||
+        typeof novaSenha !== "string") {
       return res.status(400).json({
         erro: "Token e nova senha são obrigatórios."
       });
@@ -470,44 +521,60 @@ app.post("/reset-password", sensitiveLimiter, async (req, res) => {
       });
     }
 
-    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-    const [tokens] = await pool.execute(
+    const tokenHash = hashToken(token);
+    const senhaHash = await bcrypt.hash(novaSenha, 12);
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+    const [tokens] = await connection.execute(
       `SELECT usuario_id
        FROM reset_tokens
-       WHERE token = ?
-       AND usado = FALSE
-       AND expira_em > NOW()`,
+       WHERE token = ? AND usado = FALSE AND expira_em > NOW()
+       FOR UPDATE`,
       [tokenHash]
     );
 
     if (tokens.length === 0) {
+      await connection.rollback();
       return res.status(400).json({
         erro: "Token inválido, expirado ou já utilizado."
       });
     }
 
     const reset = tokens[0];
-
-    const senhaHash = await bcrypt.hash(novaSenha, 12);
-
-    await pool.execute(
+    await connection.execute(
       "UPDATE usuarios SET senha_hash = ? WHERE id = ?",
       [senhaHash, reset.usuario_id]
     );
 
-    await pool.execute(
-      "UPDATE reset_tokens SET usado = TRUE WHERE token = ?",
+    const [consumed] = await connection.execute(
+      "UPDATE reset_tokens SET usado = TRUE WHERE token = ? AND usado = FALSE",
       [tokenHash]
     );
+    if (!consumed.affectedRows) {
+      await connection.rollback();
+      return res.status(400).json({
+        erro: "Token inválido, expirado ou já utilizado."
+      });
+    }
 
+    await connection.commit();
     res.json({
       mensagem: "Senha alterada com sucesso."
     });
-  } catch (erro) {
-    console.error("Erro ao redefinir senha:", erro);
+  } catch {
+    if (connection) {
+      try {
+        await connection.rollback();
+      } catch {
+        console.error("Falha ao reverter transação de redefinição.");
+      }
+    }
+    console.error("Erro ao redefinir senha.");
     res.status(500).json({
       erro: "Erro ao redefinir senha."
     });
+  } finally {
+    connection?.release();
   }
 });
 
@@ -525,6 +592,10 @@ app.get("/health", async (req, res) => {
   }
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Auth Service disponível na porta ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Auth Service disponível na porta ${PORT}`);
+  });
+}
+
+module.exports = { app };

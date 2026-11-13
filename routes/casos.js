@@ -2,7 +2,7 @@ const express = require("express");
 const mysql = require("mysql2/promise");
 const dns = require("node:dns/promises");
 const net = require("node:net");
-const { generateContentWithFallback } = require("../services/gemini");
+const { createFreeExecutionLimit } = require("../services/execution-limit");
 
 const router = express.Router();
 const pool = mysql.createPool({
@@ -18,7 +18,8 @@ const pool = mysql.createPool({
 const AUTH_URL = process.env.AUTH_SERVICE_URL || "http://auth-service:3001";
 const LOG_URL = process.env.LOG_SERVICE_URL || "http://log-service:3002";
 const INTERNAL_SECRET = process.env.INTERNAL_SERVICE_SECRET;
-const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || "";
+const limitarExecucoesFree = createFreeExecutionLimit(pool);
+const GROQ_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 
 async function autenticar(req, res, next) {
   const authorization = req.get("Authorization");
@@ -100,62 +101,6 @@ function validarCaso(body) {
   return { campos: { titulo, descricao: String(body.descricao || "").slice(0, 4000), metodo, endpoint, headers, corpo, status_esperado: status } };
 }
 
-function chaveCaso(caso) {
-  const ordenar = value => Array.isArray(value)
-    ? value.map(ordenar)
-    : value && typeof value === "object"
-      ? Object.fromEntries(Object.keys(value).sort().map(key => [key, ordenar(value[key])]))
-      : value;
-  return JSON.stringify([
-    caso.titulo, caso.descricao, caso.metodo, caso.endpoint,
-    ordenar(caso.headers), ordenar(caso.corpo), caso.status_esperado
-  ]);
-}
-
-async function gerarCasosGemini(prompt, apiKey) {
-  const { data } = await generateContentWithFallback(prompt, apiKey, GEMINI_MODEL);
-  const raw = data?.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("") || "";
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    const error = new Error("O Gemini retornou uma resposta que não contém JSON válido.");
-    error.code = "GEMINI_INVALID_RESPONSE";
-    error.status = 502;
-    throw error;
-  }
-  if (!Array.isArray(parsed?.casos) || parsed.casos.length < 3 || parsed.casos.length > 5) {
-    const error = new Error("O Gemini não retornou entre 3 e 5 casos de teste válidos.");
-    error.code = "GEMINI_INVALID_RESPONSE";
-    error.status = 502;
-    throw error;
-  }
-
-  const casos = parsed.casos.map(item => {
-    if (!item || typeof item !== "object" || Array.isArray(item)) {
-      const error = new Error("O Gemini retornou um ou mais casos inválidos. Nenhum caso foi salvo.");
-      error.code = "GEMINI_INVALID_RESPONSE";
-      error.status = 502;
-      throw error;
-    }
-    const validacao = validarCaso(item);
-    if (validacao.erro) {
-      const error = new Error("O Gemini retornou um ou mais casos inválidos. Nenhum caso foi salvo.");
-      error.code = "GEMINI_INVALID_RESPONSE";
-      error.status = 502;
-      throw error;
-    }
-    return validacao.campos;
-  });
-  if (new Set(casos.map(chaveCaso)).size !== casos.length) {
-    const error = new Error("O Gemini retornou casos duplicados. Nenhum caso foi salvo.");
-    error.code = "GEMINI_INVALID_RESPONSE";
-    error.status = 502;
-    throw error;
-  }
-  return casos;
-}
-
 function ipv4Privado(ip) {
   const p = ip.split(".").map(Number);
   if (p.length !== 4 || p.some(n => !Number.isInteger(n) || n < 0 || n > 255)) return true;
@@ -224,7 +169,7 @@ router.get("/:projetoId/casos", exigir("cases:read"), async (req, res) => {
     if (!projeto) return res.status(404).json({ erro: "Projeto não encontrado." });
     const [casos] = await pool.execute(
       `SELECT c.id, c.titulo, c.descricao, c.metodo, c.endpoint, c.headers, c.corpo,
-              c.status_esperado, c.ativo, c.criado_em,
+              c.status_esperado, c.ativo, c.modo_execucao, c.criado_em,
               (SELECT e.status FROM execucoes e WHERE e.caso_teste_id = c.id
                AND e.projeto_id = c.projeto_id AND e.usuario_id = c.usuario_id
                ORDER BY e.executado_em DESC LIMIT 1) AS ultimo_status
@@ -262,6 +207,23 @@ router.post("/:projetoId/casos", exigir("cases:create"), async (req, res) => {
   }
 });
 
+router.put("/:projetoId/casos/:casoId", exigir("cases:update"), async (req, res) => {
+  const validacao = validarCaso(req.body || {});
+  if (validacao.erro) return res.status(400).json({ erro: validacao.erro });
+  try {
+    const projeto = await projetoDoUsuario(req.params.projetoId, req.usuario.id);
+    if (!projeto) return res.status(404).json({ erro: "Projeto não encontrado." });
+    const c = validacao.campos;
+    const [result] = await pool.execute(
+      `UPDATE casos_teste SET titulo=?, descricao=?, metodo=?, endpoint=?, headers=?, corpo=?, status_esperado=?
+       WHERE id=? AND projeto_id=? AND usuario_id=? AND modo_execucao=?` ,
+      [c.titulo, c.descricao, c.metodo, c.endpoint, JSON.stringify(c.headers), c.corpo === null ? null : JSON.stringify(c.corpo), c.status_esperado, req.params.casoId, projeto.id, req.usuario.id, "http"]
+    );
+    if (!result.affectedRows) return res.status(404).json({ erro: "Caso HTTP não encontrado." });
+    await auditar(req, "caso_teste.atualizado", { projeto_id: projeto.id, caso_id: Number(req.params.casoId) });
+    res.json({ mensagem: "Caso de teste atualizado." });
+  } catch (error) { console.error("Erro ao atualizar caso:", error.message); res.status(500).json({ erro: "Não foi possível atualizar o caso." }); }
+});
 router.delete("/:projetoId/casos/:casoId", exigir("cases:delete"), async (req, res) => {
   try {
     const [result] = await pool.execute(
@@ -278,13 +240,14 @@ router.delete("/:projetoId/casos/:casoId", exigir("cases:delete"), async (req, r
 });
 
 router.post("/:projetoId/casos/gerar-ia", exigir("cases:create"), async (req, res) => {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return res.status(503).json({ erro: "Configure GEMINI_API_KEY no ambiente do servidor para habilitar a geração com IA." });
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) return res.status(503).json({ erro: "Configure GROQ_API_KEY no ambiente do servidor para habilitar a geração com IA." });
   const objetivo = typeof req.body?.objetivo === "string" ? req.body.objetivo.trim().slice(0, 3000) : "";
   try {
     const projeto = await projetoDoUsuario(req.params.projetoId, req.usuario.id);
     if (!projeto) return res.status(404).json({ erro: "Projeto não encontrado." });
     if (!projeto.url_base) return res.status(400).json({ erro: "Cadastre a URL base da API no projeto antes de gerar os casos." });
+
     const prompt = `Você é especialista em QA de APIs REST. Gere de 3 a 5 casos de teste úteis para esta API.
 Projeto: ${projeto.nome}
 URL base: ${projeto.url_base}
@@ -292,64 +255,76 @@ Objetivo/contexto informado: ${objetivo || "Criar cenários básicos positivos, 
 Responda somente JSON válido no formato:
 {"casos":[{"titulo":"...","descricao":"...","metodo":"GET","endpoint":"/caminho","headers":{},"corpo":null,"status_esperado":200}]}
 Regras: endpoint deve ser caminho relativo iniciado por /; não use URL completa; métodos GET, POST, PUT, PATCH, DELETE, HEAD ou OPTIONS; status esperado inteiro; não invente autenticação nem dados secretos; prefira cenários seguros e sem operações destrutivas.`;
-    const casosGerados = await gerarCasosGemini(prompt, apiKey);
-    const salvos = [];
-    let novos = 0;
-    const connection = await pool.getConnection();
-    try {
-      await connection.beginTransaction();
-      await connection.execute(
-        "SELECT id FROM projetos WHERE id = ? AND usuario_id = ? FOR UPDATE",
-        [projeto.id, req.usuario.id]
-      );
-      const [existentes] = await connection.execute(
-        `SELECT id, titulo, descricao, metodo, endpoint, headers, corpo, status_esperado
-         FROM casos_teste WHERE projeto_id = ? AND usuario_id = ?`,
-        [projeto.id, req.usuario.id]
-      );
-      const porChave = new Map();
-      for (const existente of existentes) {
-        const headers = typeof existente.headers === "string" ? JSON.parse(existente.headers || "{}") : (existente.headers || {});
-        const corpo = typeof existente.corpo === "string" ? JSON.parse(existente.corpo) : existente.corpo;
-        const validacao = validarCaso({ ...existente, headers, corpo });
-        if (!validacao.erro) porChave.set(chaveCaso(validacao.campos), existente.id);
-      }
-      for (const caso of casosGerados) {
-        const chave = chaveCaso(caso);
-        const idExistente = porChave.get(chave);
-        if (idExistente) {
-          salvos.push({ id: idExistente, ...caso });
-          continue;
-        }
-        const [result] = await connection.execute(
-          `INSERT INTO casos_teste
-           (projeto_id, usuario_id, titulo, descricao, metodo, endpoint, headers, corpo, status_esperado)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [projeto.id, req.usuario.id, caso.titulo, caso.descricao, caso.metodo, caso.endpoint,
-           JSON.stringify(caso.headers), caso.corpo === null ? null : JSON.stringify(caso.corpo), caso.status_esperado]
-        );
-        porChave.set(chave, result.insertId);
-        salvos.push({ id: result.insertId, ...caso });
-        novos += 1;
-      }
-      await connection.commit();
-    } catch (error) {
-      await connection.rollback();
-      throw error;
-    } finally {
-      connection.release();
+
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [
+          { role: "system", content: "Você gera casos de teste para APIs REST. Retorne somente um objeto JSON válido, sem Markdown." },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.2,
+        max_tokens: 4096,
+        response_format: { type: "json_object" }
+      }),
+      signal: AbortSignal.timeout(90000)
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.error(`Groq respondeu HTTP ${response.status}:`, data.error?.message || "Erro sem detalhes");
+      const status = response.status === 429 ? 503 : response.status >= 500 ? 503 : 502;
+      return res.status(status).json({
+        erro: response.status === 429
+          ? "O limite de solicitações da IA foi atingido. Tente novamente mais tarde."
+          : response.status === 401 || response.status === 403
+            ? "A chave da Groq foi recusada. Confira a variável GROQ_API_KEY no servidor."
+            : response.status === 404
+              ? "O modelo configurado na Groq não foi encontrado. Confira GROQ_MODEL."
+              : "A integração com a Groq retornou um erro. Verifique a configuração e os logs."
+      });
     }
-    await auditar(req, "casos_teste.gerados_ia", { projeto_id: projeto.id, quantidade: salvos.length, novos });
-    res.status(201).json({ mensagem: `${salvos.length} casos gerados e salvos com Gemini.`, casos: salvos });
+
+    console.log(`Geração de casos concluída com Groq (${GROQ_MODEL}).`);
+    const raw = data.choices?.[0]?.message?.content || "";
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch { throw new Error("A resposta da IA não veio em JSON válido."); }
+    if (!Array.isArray(parsed.casos) || !parsed.casos.length) throw new Error("A IA não retornou casos de teste.");
+
+    const salvos = [];
+    for (const item of parsed.casos.slice(0, 5)) {
+      const validacao = validarCaso(item);
+      if (validacao.erro) continue;
+      const c = validacao.campos;
+      const [result] = await pool.execute(
+        `INSERT INTO casos_teste
+         (projeto_id, usuario_id, titulo, descricao, metodo, endpoint, headers, corpo, status_esperado)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [projeto.id, req.usuario.id, c.titulo, c.descricao, c.metodo, c.endpoint,
+         JSON.stringify(c.headers), c.corpo === null ? null : JSON.stringify(c.corpo), c.status_esperado]
+      );
+      salvos.push({ id: result.insertId, ...c });
+    }
+    if (!salvos.length) throw new Error("A IA gerou cenários que não passaram pela validação.");
+    await auditar(req, "casos_teste.gerados_ia", { projeto_id: projeto.id, quantidade: salvos.length });
+    res.status(201).json({ mensagem: `${salvos.length} casos gerados e salvos com Groq.`, casos: salvos });
   } catch (error) {
-    console.error("Erro na geração Gemini:", error.code || "GENERATION_FAILED");
-    const status = error.status || 500;
-    const mensagem = error.code ? error.message : "Não foi possível salvar os casos gerados.";
-    res.status(status).json({ erro: mensagem, codigo: error.code || "GENERATION_FAILED" });
+    const timedOut = error.name === "TimeoutError" || error.name === "AbortError";
+    console.error("Erro na geração Groq:", error.message);
+    res.status(timedOut ? 504 : 502).json({
+      erro: timedOut
+        ? "A Groq demorou mais de 90 segundos para responder. Tente novamente."
+        : (error.message || "Não foi possível gerar os casos com IA.")
+    });
   }
 });
 
-router.post("/:projetoId/casos/:casoId/executar", exigir("executions:create"), async (req, res) => {
+router.post("/:projetoId/casos/:casoId/executar", exigir("executions:create"), limitarExecucoesFree, async (req, res) => {
   const inicio = Date.now();
   try {
     const projeto = await projetoDoUsuario(req.params.projetoId, req.usuario.id);
@@ -411,6 +386,8 @@ router.post("/:projetoId/casos/:casoId/executar", exigir("executions:create"), a
       console.error("Não foi possível registrar erro da execução:", dbError.message);
     }
     res.status(400).json({ erro: message || "Falha ao executar o teste." });
+  } finally {
+    await req.liberarLockExecucaoFree?.();
   }
 });
 

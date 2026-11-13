@@ -2,6 +2,8 @@ name: CI/CD
 
 on:
   push:
+    branches: [main, 'feat/**']
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
@@ -63,7 +65,7 @@ jobs:
           exit 1
 
       - name: Testar status da aplicação
-        run: curl -fsS http://localhost:3000/api/status | grep -q '"api":"pending"'
+        run: curl -fsS http://localhost:3000/api/status | grep -q '"api":"projects-cases-executions"'
 
       - name: Testar health do log-service
         run: docker compose exec -T log-service node -e "fetch('http://127.0.0.1:3002/health').then(async r=>{console.log(await r.text()); process.exit(r.ok?0:1)}).catch(e=>{console.error(e);process.exit(1)})"

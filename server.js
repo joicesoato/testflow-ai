@@ -7,6 +7,9 @@ const rateLimit = require("express-rate-limit");
 const projetosRouter = require("./routes/projetos");
 const casosRouter = require("./routes/casos");
 const authRouter = require("./routes/auth");
+const simulacoesRouter = require("./routes/simulacoes");
+const billingRouter = require("./routes/billing");
+const adminRouter = require("./routes/admin");
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -18,7 +21,7 @@ if (!Number.isInteger(trustProxyHops) || trustProxyHops < 0) {
 
 app.set("trust proxy", trustProxyHops);
 app.disable("x-powered-by");
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "1mb", verify(req, _res, buffer) { if (req.originalUrl === "/api/billing/webhook") req.rawBody = Buffer.from(buffer); } }));
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -59,14 +62,18 @@ app.get("/health", (_req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api/projetos", projetosRouter);
 app.use("/api/projetos", casosRouter);
+app.use("/api/projetos", simulacoesRouter);
+app.use("/api/billing", billingRouter);
+app.use("/api/admin", adminRouter);
 
 app.get("/api/status", (_req, res) => {
   res.status(200).json({
     product: "TestFlow AI",
     stage: "mvp-api-tests",
     api: "projects-cases-executions",
-    ai: process.env.GEMINI_API_KEY ? "gemini-configured" : "gemini-not-configured",
-    message: "APIs de projetos, casos de teste e execução disponíveis."
+    ai: process.env.GROQ_API_KEY ? "groq-configured" : "groq-not-configured",
+    ai_model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
+    message: "APIs de projetos, casos de teste, geração com Groq e execução disponíveis."
   });
 });
 

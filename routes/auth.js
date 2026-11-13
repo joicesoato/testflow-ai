@@ -36,8 +36,8 @@ async function encaminhar(req, res, caminho, metodo = "POST") {
     res.status(resposta.status);
     res.set("Content-Type", tipo);
     return res.send(conteudo);
-  } catch (erro) {
-    console.error("Falha ao acessar serviço de autenticação:", erro.message);
+  } catch {
+    console.error("Falha ao acessar serviço de autenticação.");
 
     return res.status(503).json({
       erro: "Serviço de autenticação indisponível. Tente novamente."
@@ -49,12 +49,52 @@ router.post("/register", (req, res) =>
   encaminhar(req, res, "/register")
 );
 
+router.post("/resend-verification", (req, res) =>
+  encaminhar(req, res, "/resend-verification")
+);
+
 router.post("/login", (req, res) =>
   encaminhar(req, res, "/login")
+);
+
+router.post("/forgot-password", (req, res) =>
+  encaminhar(req, res, "/forgot-password")
+);
+
+router.post("/reset-password", (req, res) =>
+  encaminhar(req, res, "/reset-password")
 );
 
 router.get("/verify-email", (req, res) =>
   encaminhar(req, res, "/verify-email", "GET")
 );
+
+
+router.get("/me", async (req, res) => {
+  const authorization = req.get("Authorization");
+  const internalSecret = process.env.INTERNAL_SERVICE_SECRET || "";
+  if (!authorization?.startsWith("Bearer ") || !internalSecret) {
+    return res.status(401).json({ erro: "Sessão não encontrada." });
+  }
+  try {
+    const response = await fetch(new URL("/authorize", AUTH_URL), {
+      headers: {
+        Authorization: authorization,
+        "X-Internal-Secret": internalSecret
+      },
+      signal: AbortSignal.timeout(5000)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.autenticado) {
+      return res.status(response.status === 401 ? 401 : 503).json({
+        erro: data.erro || "Não foi possível atualizar os dados da conta."
+      });
+    }
+    return res.json({ usuario: data.usuario, permissoes: data.permissoes || [] });
+  } catch {
+    console.error("Falha ao atualizar sessão.");
+    return res.status(503).json({ erro: "Serviço de autenticação indisponível." });
+  }
+});
 
 module.exports = router;

@@ -26,6 +26,27 @@ type Project = {
 
 type ProjectFormData = Omit<Project, "id">;
 
+type AdminDashboardData = {
+  metricas: {
+    usuarios_total: number;
+    usuarios_free: number;
+    usuarios_pro: number;
+    assinaturas_ativas: number;
+    assinaturas_past_due: number;
+    mrr_centavos: number;
+    moeda: string;
+  };
+  uso: { execucoes_mes: number; usuarios_que_executaram: number };
+  eventos_recentes: Array<{
+    id: string;
+    usuario_id: number | null;
+    acao: string;
+    timestamp: string;
+    detalhes: Record<string, unknown>;
+  }>;
+  avisos: string[];
+};
+
 const TOKEN_KEY = "testflow_token";
 const USER_KEY = "testflow_user";
 
@@ -96,8 +117,8 @@ function Shell({
           <Brand />
           <nav>
             <Link to="/projects">Projetos</Link>
-            <Link to="/produto">Produto</Link>
-            <Link to="/seguranca">Segurança</Link>
+            {user && <Link to="/billing">Assinatura</Link>}
+            {user && <Link to="/admin">Admin</Link>}
           </nav>
           {user ? (
             <button className="nav-cta" onClick={onLogout}>
@@ -119,7 +140,7 @@ function Shell({
   );
 }
 
-function Landing() {
+function Landing({ loggedIn }: { loggedIn: boolean }) {
   return (
     <>
       <main>
@@ -327,8 +348,8 @@ function Landing() {
               de API em um só lugar.
             </p>
           </div>
-          <Link className="primary" to="/register">
-            Criar minha conta <span>→</span>
+          <Link className="primary" to={loggedIn ? "/projects" : "/register"}>
+            {loggedIn ? "Acessar meus projetos" : "Criar minha conta"} <span>→</span>
           </Link>
         </section>
       </main>
@@ -336,167 +357,6 @@ function Landing() {
   );
 }
 
-
-function ProdutoPage() {
-  return (
-    <main>
-      <section className="section">
-        <span className="section-kicker">PRODUTO TESTFLOW AI</span>
-        <h2>
-          Qualidade de software
-          <br />
-          <em>em um único fluxo.</em>
-        </h2>
-        <p className="section-intro">
-          Organize projetos, documente cenários de teste e acompanhe
-          as etapas de validação das suas APIs REST em um só lugar.
-        </p>
-
-        <div className="feature-grid">
-          <div className="feature">
-            <span>01 / PROJETOS</span>
-            <h3>Organização centralizada</h3>
-            <p>Cadastre projetos, endereços de API e ambientes de trabalho.</p>
-          </div>
-          <div className="feature">
-            <span>02 / CENÁRIOS</span>
-            <h3>Casos de teste</h3>
-            <p>Estruture requisições e resultados esperados para cada API.</p>
-          </div>
-          <div className="feature">
-            <span>03 / EXECUÇÕES</span>
-            <h3>Acompanhamento</h3>
-            <p>Organize execuções e acompanhe os resultados dos testes.</p>
-          </div>
-          <div className="feature">
-            <span>04 / EVIDÊNCIAS</span>
-            <h3>Rastreabilidade</h3>
-            <p>Mantenha registros associados às execuções dos testes.</p>
-          </div>
-        </div>
-      </section>
-
-      <section className="workflow">
-        <div>
-          <span className="section-kicker">COMO FUNCIONA</span>
-          <h2>Do projeto à evidência, em um fluxo.</h2>
-          <p>
-            O TestFlow AI organiza as etapas necessárias para estruturar
-            e acompanhar testes de software.
-          </p>
-        </div>
-        <ol>
-          <li>
-            <b>Cadastre seu projeto</b>
-            <span>Defina a API e o ambiente que deseja testar.</span>
-          </li>
-          <li>
-            <b>Organize os casos de teste</b>
-            <span>Descreva cenários, parâmetros e resultados esperados.</span>
-          </li>
-          <li>
-            <b>Execute os testes</b>
-            <span>Acompanhe os resultados das requisições.</span>
-          </li>
-          <li>
-            <b>Registre evidências</b>
-            <span>Centralize informações para análise e rastreabilidade.</span>
-          </li>
-        </ol>
-      </section>
-
-      <section className="closing">
-        <div>
-          <span className="section-kicker">COMECE A ORGANIZAR</span>
-          <h2>Mais clareza em cada teste.</h2>
-          <p>Crie sua conta e comece a estruturar seus projetos de testes de API.</p>
-        </div>
-        <Link className="primary" to="/register">
-          Criar minha conta <span>→</span>
-        </Link>
-      </section>
-    </main>
-  );
-}
-
-function SegurancaPage() {
-  return (
-    <main>
-      <section className="security">
-        <span className="section-kicker">SEGURANÇA E CONTROLE</span>
-        <h2>
-          Seus projetos com
-          <br />
-          <em>acesso organizado.</em>
-        </h2>
-        <p className="section-intro">
-          A plataforma utiliza mecanismos de autenticação, controle de
-          permissões e registros de atividades para organizar o acesso
-          aos recursos.
-        </p>
-
-        <div className="security-grid">
-          <div>
-            <b>Autenticação</b>
-            <p>Acesso protegido por conta e sessão autenticada.</p>
-          </div>
-          <div>
-            <b>Permissões</b>
-            <p>Operações controladas conforme o perfil de acesso.</p>
-          </div>
-          <div>
-            <b>Isolamento</b>
-            <p>Projetos vinculados aos respectivos usuários.</p>
-          </div>
-          <div>
-            <b>Auditoria</b>
-            <p>Registro de ações importantes realizadas na plataforma.</p>
-          </div>
-        </div>
-      </section>
-
-      <section className="workflow">
-        <div>
-          <span className="section-kicker">CONTROLE DE ACESSO</span>
-          <h2>Organização em cada operação.</h2>
-          <p>
-            Os recursos da plataforma consideram a identidade do usuário
-            autenticado e as permissões associadas ao seu perfil.
-          </p>
-        </div>
-        <ol>
-          <li>
-            <b>Identificação</b>
-            <span>O usuário acessa a plataforma com sua conta.</span>
-          </li>
-          <li>
-            <b>Autorização</b>
-            <span>As operações verificam as permissões necessárias.</span>
-          </li>
-          <li>
-            <b>Isolamento</b>
-            <span>As consultas de projetos consideram o usuário autenticado.</span>
-          </li>
-          <li>
-            <b>Rastreabilidade</b>
-            <span>Ações importantes podem ser registradas para auditoria.</span>
-          </li>
-        </ol>
-      </section>
-
-      <section className="closing">
-        <div>
-          <span className="section-kicker">TESTFLOW AI</span>
-          <h2>Qualidade com organização.</h2>
-          <p>Conheça a plataforma e organize seus projetos de testes de API.</p>
-        </div>
-        <Link className="primary" to="/register">
-          Criar minha conta <span>→</span>
-        </Link>
-      </section>
-    </main>
-  );
-}
 
 function AuthPage({
   mode,
@@ -834,6 +694,7 @@ type TestCase = {
   endpoint: string;
   status_esperado: number;
   ultimo_status?: string | null;
+  modo_execucao?: "http" | "simulacao";
 };
 
 function CasesPanel({ token, project, canManage }: { token: string; project: Project; canManage: boolean }) {
@@ -843,9 +704,11 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
   const [method, setMethod] = useState("GET");
   const [expected, setExpected] = useState("200");
   const [objective, setObjective] = useState("");
+  const [simulationTitle, setSimulationTitle] = useState("");
+  const [simulationData, setSimulationData] = useState('{"status":"ok","total":3}');
+  const [simulationAssertions, setSimulationAssertions] = useState('[{"path":"status","operator":"equals","expected":"ok"},{"path":"total","operator":"greater_than","expected":0}]');
   const [loading, setLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiFailed, setAiFailed] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [lastResult, setLastResult] = useState<any>(null);
@@ -886,36 +749,36 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
     }
   }
 
+  async function createSimulation(event: FormEvent) {
+    event.preventDefault(); setLoading(true); setError(""); setMessage(""); setLastResult(null);
+    try {
+      const dados = JSON.parse(simulationData); const assertions = JSON.parse(simulationAssertions);
+      await apiRequest("/api/projetos/" + project.id + "/casos-simulacao", token, { method: "POST", body: JSON.stringify({ titulo: simulationTitle, dados_teste: dados, assertions }) });
+      setSimulationTitle(""); setMessage("Cenário de simulação cadastrado. Nenhuma requisição externa será realizada."); await loadCases();
+    } catch (err) { setError(err instanceof Error ? err.message : "Confira os JSONs informados."); } finally { setLoading(false); }
+  }
+
+  async function executeSimulation(id: number) {
+    setLoading(true); setError(""); setMessage(""); setLastResult(null);
+    try {
+      const data = await apiRequest("/api/projetos/" + project.id + "/casos/" + id + "/executar-simulacao", token, { method: "POST" });
+      setLastResult({ ...data.execucao, resposta: JSON.stringify(data.execucao.resumo, null, 2) }); setMessage(data.mensagem); await loadCases();
+    } catch (err) { setError(err instanceof Error ? err.message : "Falha na simulação."); } finally { setLoading(false); }
+  }
   async function generateWithAI() {
     setAiLoading(true);
-    setAiFailed(false);
     setError("");
     setMessage("");
     setLastResult(null);
     try {
       const data = await apiRequest(`/api/projetos/${project.id}/casos/gerar-ia`, token, {
         method: "POST",
-        body: JSON.stringify({ objetivo: objective }),
-        signal: AbortSignal.timeout(48000)
+        body: JSON.stringify({ objetivo: objective })
       });
       setMessage(data.mensagem || "Casos gerados com IA.");
-      if (Array.isArray(data.casos)) {
-        setCases(current => {
-          const porId = new Map(current.map(item => [item.id, item]));
-          data.casos.forEach((item: TestCase) => porId.set(item.id, item));
-          return [...porId.values()];
-        });
-      }
-      await loadCases().catch(() => undefined);
+      await loadCases();
     } catch (err) {
-      setAiFailed(true);
-      if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
-        setError("A geração excedeu o tempo limite. Você pode tentar novamente.");
-      } else if (err instanceof TypeError) {
-        setError("Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.");
-      } else {
-        setError(err instanceof Error ? err.message : "Não foi possível gerar os casos. Tente novamente.");
-      }
+      setError(err instanceof Error ? err.message : "Falha ao gerar com IA.");
     } finally {
       setAiLoading(false);
     }
@@ -957,7 +820,7 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
       <div className="list-heading">
         <div>
           <h2>Casos de teste</h2>
-          <p>Crie cenários, gere sugestões com IA e execute requisições reais.</p>
+          <p>Crie cenários, gere sugestões com IA e escolha entre requisição HTTP real ou simulação local sem URL.</p>
         </div>
         <span className="case-count">{cases.length} casos</span>
       </div>
@@ -968,7 +831,7 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
       {canManage && <div className="case-ai-panel">
         <div>
           <span className="eyebrow">TESTFLOW AI</span>
-          <h3>Gerar casos com Gemini</h3>
+          <h3>Gerar casos com Groq</h3>
           <p>A IA analisa o contexto e cria cenários que são salvos neste projeto.</p>
         </div>
         <label>
@@ -981,11 +844,22 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
           />
         </label>
         <button className="primary" type="button" onClick={generateWithAI} disabled={aiLoading || !project.baseUrl}>
-          {aiLoading ? "Gerando com Gemini..." : aiFailed ? "↻ Tentar novamente" : "✦ Gerar casos com IA"}
+          {aiLoading ? "Gerando com Groq..." : "✦ Gerar casos com IA"}
         </button>
         {!project.baseUrl && <small>Cadastre a URL base da API para habilitar a geração.</small>}
       </div>}
 
+      {canManage && <div className="case-create-panel">
+        <h3>Simulação sem URL</h3>
+        <p>Valide regras e estruturas de dados localmente. Este modo não chama APIs nem acessa a internet.</p>
+        <form className="panel-form" onSubmit={createSimulation}>
+          <label>Título do cenário<input value={simulationTitle} onChange={event => setSimulationTitle(event.target.value)} required maxLength={160} placeholder="Ex.: Validar retorno de cadastro" /></label>
+          <label>Dados de teste (JSON)<textarea rows={5} value={simulationData} onChange={event => setSimulationData(event.target.value)} required spellCheck={false} /></label>
+          <label>Verificações (JSON)<textarea rows={6} value={simulationAssertions} onChange={event => setSimulationAssertions(event.target.value)} required spellCheck={false} /></label>
+          <small>Operadores: equals, not_equals, exists, not_exists, contains, greater_than, less_than, is_true, is_false e is_type.</small>
+          <button className="secondary" type="submit" disabled={loading || !simulationTitle.trim()}>{loading ? "Salvando..." : "Criar cenário de simulação"}</button>
+        </form>
+      </div>}
       {canManage && <div className="case-create-panel">
         <h3>Novo caso manual</h3>
         <form className="case-form" onSubmit={createCase}>
@@ -1017,19 +891,19 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
 
       <div className="case-list">
         {cases.length === 0 ? (
-          <div className="pending-panel"><b>Nenhum caso cadastrado</b><span>Crie um caso manualmente ou use a geração com Gemini.</span></div>
+          <div className="pending-panel"><b>Nenhum caso cadastrado</b><span>Crie um caso manualmente ou use a geração com Groq.</span></div>
         ) : cases.map(item => (
           <article className="case-item" key={item.id}>
             <div className="case-item-main">
               <span className="method-tag">{item.metodo}</span>
               <div>
                 <b>{item.titulo}</b>
-                <small>{item.endpoint} · Esperado HTTP {item.status_esperado}</small>
+                <small>{item.modo_execucao === "simulacao" ? "SIMULAÇÃO LOCAL · sem chamada de rede" : item.endpoint + " · Esperado HTTP " + item.status_esperado}</small>
               </div>
             </div>
             <div className="case-item-actions">
               {item.ultimo_status && <span className={`status-tag ${item.ultimo_status}`}>{item.ultimo_status}</span>}
-              <button className="primary small-button" type="button" disabled={loading} onClick={() => executeCase(item.id)}>Executar</button>
+              <button className="primary small-button" type="button" disabled={loading} onClick={() => item.modo_execucao === "simulacao" ? executeSimulation(item.id) : executeCase(item.id)}>{item.modo_execucao === "simulacao" ? "Simular" : "Executar"}</button>
               {canManage && <button className="text-button" type="button" onClick={() => deleteCase(item.id)}>Excluir</button>}
             </div>
           </article>
@@ -1042,7 +916,7 @@ function CasesPanel({ token, project, canManage }: { token: string; project: Pro
             <h3>Resultado da última execução</h3>
             <span className={`status-tag ${lastResult.status}`}>{lastResult.status}</span>
           </div>
-          <p>HTTP {lastResult.status_http} · {lastResult.duracao_ms} ms · Esperado {lastResult.status_esperado}</p>
+          <p>{lastResult.modo_execucao === "simulacao" ? "SIMULAÇÃO LOCAL · " + (lastResult.resumo?.passed || 0) + " de " + (lastResult.resumo?.total || 0) + " verificações aprovadas · " + lastResult.duracao_ms + " ms" : "HTTP " + lastResult.status_http + " · " + lastResult.duracao_ms + " ms · Esperado " + lastResult.status_esperado}</p>
           {lastResult.erro && <div className="form-error">{lastResult.erro}</div>}
           <pre>{lastResult.resposta || "A API não retornou conteúdo."}</pre>
         </div>
@@ -1164,6 +1038,97 @@ function ProjectDetails({
   );
 }
 
+function BillingPage({ token }: { token: string }) {
+  const [status, setStatus] = useState<any>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState("");
+  const [message] = useState(new URLSearchParams(window.location.search).get("checkout") === "success" ? "Checkout concluído. A confirmação depende do webhook Stripe." : "");
+  useEffect(() => { apiRequest("/api/billing/status", token).then(data => setStatus(data.assinatura)).catch(err => setError(err.message)).finally(() => setLoading(false)); }, [token]);
+  async function action(path: string) { setLoading(true); setError(""); try { const data = await apiRequest(path, token, { method: "POST" }); if (data.url) window.location.assign(data.url); } catch (err) { setError(err instanceof Error ? err.message : "Falha na cobrança."); } finally { setLoading(false); } }
+  return <main className="workspace narrow"><div className="page-heading"><div><span className="eyebrow">CONTA E PLANO</span><h1>Assinatura</h1><p>Consulte seu plano e gerencie a cobrança.</p></div></div>
+    {error && <div className="form-error">{error}</div>}{message && <div className="form-success">{message}</div>}
+    {loading && !status ? <div className="empty-state">Carregando assinatura...</div> : <section className="case-create-panel"><span className="eyebrow">PLANO ATUAL</span><h2>{status?.plano === "pro" ? "TestFlow Pro" : "Plano gratuito"}</h2><p>Status: {status?.status || "inactive"}</p>{status?.periodo_fim && <p>Período até {new Date(status.periodo_fim).toLocaleDateString("pt-BR")}</p>}{status?.cancelar_no_fim && <p>Cancelamento programado ao fim do período.</p>}{status?.plano === "pro" ? <button className="primary" disabled={loading} onClick={() => action("/api/billing/portal")}>Gerenciar assinatura</button> : <button className="primary" disabled={loading} onClick={() => action("/api/billing/checkout")}>Assinar TestFlow Pro</button>}<small>Checkout depende da configuração de chaves e preço recorrente no servidor.</small></section>}</main>;
+}
+
+function AdminDashboard({ token }: { token: string }) {
+  const [dashboard, setDashboard] = useState<AdminDashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError("");
+    apiRequest("/api/admin/dashboard", token, { signal: AbortSignal.timeout(20000) })
+      .then(data => { if (active) setDashboard(data); })
+      .catch(err => { if (active) setError(err instanceof Error ? err.message : "Não foi possível carregar o painel."); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [token, attempt]);
+
+  const money = (centavos: number, currency: string) =>
+    (centavos / 100).toLocaleString("pt-BR", { style: "currency", currency });
+
+  return (
+    <main className="workspace admin-workspace">
+      <div className="page-heading">
+        <div>
+          <span className="eyebrow">GESTÃO DA PLATAFORMA</span>
+          <h1>Painel administrativo</h1>
+          <p>Visão geral de contas, assinaturas, uso e atividade recente.</p>
+        </div>
+        <button className="secondary" type="button" onClick={() => setAttempt(value => value + 1)} disabled={loading}>
+          {loading ? "Atualizando..." : "Atualizar"}
+        </button>
+      </div>
+
+      {error && <div className="form-error admin-error" role="alert">
+        <span>{error}</span>
+        <button className="secondary" type="button" onClick={() => setAttempt(value => value + 1)} disabled={loading}>Tentar novamente</button>
+      </div>}
+      {loading && !dashboard && <div className="empty-state" role="status">Carregando métricas administrativas...</div>}
+      {dashboard && <>
+        {dashboard.avisos.map((aviso, index) => <div className="admin-warning" role="status" key={`${index}-${aviso}`}>{aviso}</div>)}
+
+        <section className="admin-metrics" aria-label="Métricas da plataforma">
+          <article className="admin-metric"><span>Usuários totais</span><strong>{dashboard.metricas.usuarios_total.toLocaleString("pt-BR")}</strong></article>
+          <article className="admin-metric"><span>Plano Free</span><strong>{dashboard.metricas.usuarios_free.toLocaleString("pt-BR")}</strong></article>
+          <article className="admin-metric"><span>Plano Pro</span><strong>{dashboard.metricas.usuarios_pro.toLocaleString("pt-BR")}</strong></article>
+          <article className="admin-metric"><span>Assinaturas ativas</span><strong>{dashboard.metricas.assinaturas_ativas.toLocaleString("pt-BR")}</strong></article>
+          <article className="admin-metric"><span>Pagamento pendente</span><strong>{dashboard.metricas.assinaturas_past_due.toLocaleString("pt-BR")}</strong></article>
+          <article className="admin-metric"><span>MRR estimado</span><strong>{money(dashboard.metricas.mrr_centavos, dashboard.metricas.moeda)}</strong></article>
+        </section>
+
+        <div className="admin-dashboard-columns">
+          <section className="admin-section">
+            <div className="admin-section-heading"><div><span className="eyebrow">MÊS ATUAL</span><h2>Uso da plataforma</h2></div></div>
+            <div className="admin-usage">
+              <div><span>Execuções registradas</span><strong>{dashboard.uso.execucoes_mes.toLocaleString("pt-BR")}</strong></div>
+              <div><span>Usuários que executaram</span><strong>{dashboard.uso.usuarios_que_executaram.toLocaleString("pt-BR")}</strong></div>
+            </div>
+          </section>
+
+          <section className="admin-section">
+            <div className="admin-section-heading"><div><span className="eyebrow">REDIS STREAMS</span><h2>Eventos recentes</h2></div></div>
+            {dashboard.eventos_recentes.length === 0 ? (
+              <div className="admin-empty">Nenhum evento recente.</div>
+            ) : (
+              <ol className="admin-events">
+                {dashboard.eventos_recentes.map(evento => (
+                  <li key={evento.id}>
+                    <div className="admin-event-top"><strong>{evento.acao}</strong><time dateTime={evento.timestamp}>{new Date(evento.timestamp).toLocaleString("pt-BR")}</time></div>
+                    <span>Usuário {evento.usuario_id ?? "não identificado"}</span>
+                    {Object.keys(evento.detalhes).length > 0 && <pre>{JSON.stringify(evento.detalhes, null, 2)}</pre>}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+        </div>
+      </>}
+    </main>
+  );
+}
+
 function Protected({
   token,
   children
@@ -1277,9 +1242,11 @@ export default function App() {
   return (
     <Shell user={user} onLogout={logout}>
       <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/produto" element={<ProdutoPage />} />
-        <Route path="/seguranca" element={<SegurancaPage />} />
+        <Route path="/" element={<Landing loggedIn={Boolean(token)} />} />
+        <Route path="/produto" element={<Navigate to="/" replace />} />
+        <Route path="/seguranca" element={<Navigate to="/" replace />} />
+        <Route path="/billing" element={<Protected token={token}><BillingPage token={token || ""} /></Protected>} />
+        <Route path="/admin" element={<Protected token={token}><AdminDashboard token={token || ""} /></Protected>} />
 
         <Route
           path="/login"
