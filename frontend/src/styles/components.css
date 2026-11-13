@@ -174,3 +174,35 @@
   .workspace { padding-left: 76px; padding-right: 76px; }
   .projects-workspace .project-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
 }
+
+
+/* Experiência de assinatura e confirmação do Stripe */
+.billing-workspace { max-width: 900px; }
+.billing-success-panel,.billing-pending-panel,.billing-free-panel {
+  border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:clamp(22px,4vw,38px);margin-top:22px;
+}
+.billing-success-panel { border-color:rgba(157,226,181,.35);background:linear-gradient(145deg,rgba(45,120,82,.16),var(--panel) 55%); }
+.billing-success-icon,.billing-pending-icon {
+  display:grid;place-items:center;width:52px;height:52px;border-radius:50%;margin-bottom:20px;
+  background:rgba(91,194,130,.16);color:#9de2b5;font-size:27px;font-weight:800;
+}
+.billing-success-panel h2,.billing-pending-panel h2,.billing-free-panel h2 { margin:10px 0;font-size:clamp(23px,3vw,30px); }
+.billing-success-panel>p,.billing-pending-panel>p,.billing-free-panel>p { color:var(--muted);line-height:1.7;max-width:650px; }
+.billing-plan-summary { display:flex;align-items:center;justify-content:space-between;gap:16px;margin:26px 0 12px;padding:17px 18px;border:1px solid var(--line);border-radius:11px;background:rgba(8,18,32,.35); }
+.billing-plan-summary div { display:grid;gap:6px; }.billing-plan-summary div span,.billing-free-tag { color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.12em; }
+.billing-plan-summary strong { font-size:18px; }.billing-active-tag { color:#9de2b5;background:rgba(55,175,105,.14);padding:7px 10px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.08em; }
+.billing-period { color:var(--muted);font-size:12px; }.billing-period strong { color:#e8edf7; }
+.billing-benefits { list-style:none;display:grid;gap:11px;margin:24px 0;padding:0;color:#dce7f3;font-size:13px; }
+.billing-benefits li:before { content:"✓";color:#b8ed65;font-weight:900;margin-right:10px; }
+.billing-actions { display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:25px; }
+.billing-actions .primary,.billing-actions .secondary { text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px; }
+.billing-pending-panel { border-color:rgba(197,243,106,.3); }.billing-pending-icon { color:#c5f36a;background:rgba(197,243,106,.12); }
+.billing-progress { height:5px;border-radius:9px;background:rgba(255,255,255,.08);overflow:hidden;margin:22px 0 12px; }
+.billing-progress span { display:block;width:38%;height:100%;border-radius:9px;background:#c5f36a;animation:billing-progress 1.4s ease-in-out infinite alternate; }
+@keyframes billing-progress { from { transform:translateX(-10%); } to { transform:translateX(165%); } }
+.billing-pending-panel small { color:var(--muted);font-size:11px;line-height:1.6; }.billing-pending-panel.compact { padding:22px;margin-bottom:16px; }
+.billing-pending-panel.compact h2 { font-size:20px; }.billing-pending-panel.compact button { margin-top:8px; }
+.billing-free-heading { display:flex;align-items:center;justify-content:space-between;gap:16px; }.billing-free-tag { padding:7px 11px;border:1px solid var(--line);border-radius:999px; }
+.billing-cancel-notice { margin:16px 0;padding:13px 15px;border:1px solid #735b31;border-radius:9px;background:#2b2519;color:#f0d48e;font-size:12px; }
+@media(max-width:600px) { .billing-actions { align-items:stretch;flex-direction:column; }.billing-actions>* { width:100%; }.billing-plan-summary { align-items:flex-start; } }
+@media(prefers-reduced-motion:reduce) { .billing-progress span { animation:none; } }
