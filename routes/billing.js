@@ -100,12 +100,20 @@ router.post("/webhook", async (req, res) => {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    const [existing] = await connection.execute("SELECT id FROM stripe_eventos WHERE stripe_event_id = ? FOR UPDATE", [event.id]);
-    if (existing.length) {
-      await connection.commit();
-      return res.json({ recebido: true, duplicado: true });
+    // A chave UNIQUE faz a deduplicação sem SELECT ... FOR UPDATE,
+    // evitando gap locks e deadlocks quando o Stripe entrega eventos simultaneamente.
+    try {
+      await connection.execute(
+        "INSERT INTO stripe_eventos (stripe_event_id, tipo) VALUES (?, ?)",
+        [event.id, event.type]
+      );
+    } catch (error) {
+      if (error.code === "ER_DUP_ENTRY") {
+        await connection.rollback();
+        return res.json({ recebido: true, duplicado: true });
+      }
+      throw error;
     }
-    await connection.execute("INSERT INTO stripe_eventos (stripe_event_id, tipo) VALUES (?, ?)", [event.id, event.type]);
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
